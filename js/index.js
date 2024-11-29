@@ -5,7 +5,7 @@ function onPageLoad() {
 	document.getElementById("upld_status").style.visibility = "hidden";
 
 	var http = new XMLHttpRequest();
-	http.open("GET", "cgi-bin/sysinfo_i2c.sh", true);
+	http.open("GET", "cgi-bin/sysinfo_eeprom.sh", true);
 	http.send();
 
 	http.onload = function() {

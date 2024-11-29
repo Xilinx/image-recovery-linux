@@ -13,13 +13,13 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				if [ "${val[0]}" = "Image_A" ]; then
 					echo "IMAGE A"
 					echo ${val[1]} > imageA.txt
-					flash_eraseall /dev/mtd5
-					flashcp ${val[1]} /dev/mtd5
+					flash_eraseall /dev/mtd8
+					flashcp ${val[1]} /dev/mtd8
 				elif [ "${val[0]}" = "Image_B" ]; then
 					echo "IMAGE B"
 					echo ${val[1]} > imageB.txt
-					flash_eraseall /dev/mtd7
-					flashcp ${val[1]} /dev/mtd7
+					flash_eraseall /dev/mtd11
+					flashcp ${val[1]} /dev/mtd11
 				else
 					echo "IMAGE WIC"
 					echo ${val[1]} > imageWIC.txt
