@@ -29,12 +29,12 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 			mv $CGIBASHOPTS_TMP "$CGIBASHOPTS_DIR/$val"
 			if [ "$var" = "Image_A" ]; then
 				echo "IMAGE A"  > imageA.txt
-				flash_eraseall /dev/mtd8
-				flashcp $val /dev/mtd8
+				flash_eraseall /dev/mtd9
+				flashcp $val /dev/mtd9
 			elif [ "$var" = "Image_B" ]; then
 				echo "IMAGE B"  > imageB.txt
-				flash_eraseall /dev/mtd11
-				flashcp $val /dev/mtd11
+				flash_eraseall /dev/mtd12
+				flashcp $val /dev/mtd12
 			else
 				echo "IMAGE WIC" > imageWIC.txt
 				xzcat $val | dd of=/dev/mmcblk0 bs=32M
