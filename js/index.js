@@ -50,6 +50,7 @@ function onUsbTab() {
 
 	document.getElementById("recAimg_usb").checked = false;
 	document.getElementById("recBimg_usb").checked = false;
+	document.getElementById("recSysRdy_usb").checked = false;
 	document.getElementById("recWICimg_usb").checked = false;
 	document.getElementById("upld_prgrs_usb").style.visibility = "hidden";
 	document.getElementById("upld_status_usb").style.visibility = "hidden";
@@ -129,8 +130,8 @@ function onUploadProgress(evt) {
 }
 
 function onUploadSuccess(evt) {
-	initiateCrcValidation();
 	document.getElementById('upld_status').value = "Verifying CRC32 . . . . .";
+	crc32Validate();
 }
 
 function onUploadFailed(evt) {
@@ -139,6 +140,8 @@ function onUploadFailed(evt) {
 
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
+	else if (document.getElementById("recSysRdy").checked)
+		imgId = 'C';
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -153,6 +156,8 @@ function onUploadCanceled(evt) {
 
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
+	else if (document.getElementById("recSysRdy").checked)
+		imgId = 'C';
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -164,11 +169,12 @@ function onUploadCanceled(evt) {
 function disableAllUsrInputs() {
 	document.getElementById("brws_btn").disabled = true;
 	document.getElementById("upld_btn").disabled = true;
-	document.getElementById("sbmt_btn").disabled = true;
 	document.getElementById("recAimg").disabled = true;
 	document.getElementById("recAimg_usb").disabled = true;
 	document.getElementById("recBimg").disabled = true;
 	document.getElementById("recBimg_usb").disabled = true;
+	document.getElementById("recSysRdy").disabled = true;
+	document.getElementById("recSysRdy_usb").disabled = true;
 	document.getElementById("recWICimg").disabled = true;
 	document.getElementById("recWICimg_usb").disabled = true;
 }
@@ -176,6 +182,7 @@ function disableAllUsrInputs() {
 function disableAllUsrInputs_usb() {
 	document.getElementById("recAimg_usb").disabled = true;
 	document.getElementById("recBimg_usb").disabled = true;
+	document.getElementById("recSysRdy_usb").disabled = true;
 	document.getElementById("recWICimg_usb").disabled = true;
 }
 
@@ -183,10 +190,11 @@ function enableAllUsrInputs() {
 	document.getElementById("brws_btn").disabled = false;
 	document.getElementById("upld_btn").disabled = false;
 	document.getElementById("sbmt_btn").disabled = false;
-	document.getElementById("recAimg").disabled = false;
 	document.getElementById("recAimg_usb").disabled = false;
 	document.getElementById("recBimg").disabled = false;
 	document.getElementById("recBimg_usb").disabled = false;
+	document.getElementById("recSysRdy").disabled = false;
+	document.getElementById("recSysRdy_usb").disabled = false;
 	document.getElementById("recWICimg").disabled = false;
 	document.getElementById("recWICimg_usb").disabled = false;
 }
@@ -194,6 +202,7 @@ function enableAllUsrInputs() {
 function enableAllUsrInputs_usb() {
 	document.getElementById("recAimg_usb").disabled = false;
 	document.getElementById("recBimg_usb").disabled = false;
+	document.getElementById("recSysRdy_usb").disabled = false;
 	document.getElementById("recWICimg_usb").disabled = false;
 }
 
@@ -203,6 +212,8 @@ function initiateImgUpload () {
 
 	if (document.getElementById("recBimg").checked)
 		imgId = "B";
+	else if (document.getElementById("recSysRdy").checked)
+		imgId = "C";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -217,7 +228,7 @@ function initiateImgUpload () {
 	xhr.addEventListener("load", onUploadSuccess, false);
 	xhr.addEventListener("error", onUploadFailed, false);
 	xhr.addEventListener("abort", onUploadCanceled, false);
-	xhr.open("POST", "cgi-bin/write.sh", true);
+	xhr.open("POST", "cgi-bin/eth_write.sh", true);
 	xhr.send(fd);
 }
 
@@ -227,6 +238,8 @@ function onUpload() {
 
 	if (document.getElementById("recBimg").checked)
 		imgId = "B";
+	else if (document.getElementById("recSysRdy").checked)
+		imgId = "C";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -314,6 +327,8 @@ function onUpload_usb() {
 		imgId = "A";
 	else if (document.getElementById("recBimg_usb").checked)
 		imgId = "B";
+	else if (document.getElementById("recSysRdy_usb").checked)
+		imgId = "C";
 	else if (document.getElementById("recWICimg_usb").checked)
 		imgId = "WIC";
 	
@@ -377,6 +392,8 @@ function flashErase() {
 
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
+	else if (document.getElementById("recSysRdy").checked)
+		imgId = 'C';
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -471,6 +488,8 @@ function initiateCrcValidation() {
 
 		if (document.getElementById("recBimg").checked)
 			imgId = 'B';
+		else if (document.getElementById("recSysRdy").checked)
+			imgId = 'C';
 		else if (document.getElementById("recWICimg").checked)
 			imgId = "WIC"
 
@@ -484,6 +503,23 @@ function initiateCrcValidation() {
 		}
 
 		updateBootImgStatus(objPage);
+		enableAllUsrInputs();
+	}
+}
+
+function crc32Validate() {
+	var http = new XMLHttpRequest();
+	http.open("GET", "cgi-bin/crc32.sh", true);
+	http.send();
+
+	http.onload = function() {
+		var res = this.responseText;
+		if (res == 'ok\n') {
+			document.getElementById('upld_status').value = "Upload successful . . . . .";
+		}
+		else {
+			document.getElementById('upld_status').value = "Upload failed . . . . .";
+		}
 		enableAllUsrInputs();
 	}
 }

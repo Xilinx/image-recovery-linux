@@ -11,18 +11,21 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 			if [[ $line =~ ^Content-Disposition:\ *form-data[\;,]\ *name=\"([^\"]+)\"(\;\ *filename=\"([^\"]+)\")? ]]; then
 				read -ra val <<< "${BASH_REMATCH[1]}"
 				if [ "${val[0]}" = "Image_A" ]; then
-					echo "IMAGE A"
-					echo ${val[1]} > imageA.txt
+					echo ${val[1]} > ImageA.txt
 					flash_eraseall /dev/mtd9
 					flashcp ${val[1]} /dev/mtd9
 				elif [ "${val[0]}" = "Image_B" ]; then
-					echo "IMAGE B"
-					echo ${val[1]} > imageB.txt
+					echo ${val[1]} > ImageB.txt
 					flash_eraseall /dev/mtd12
 					flashcp ${val[1]} /dev/mtd12
+				elif [ "${val[0]}" = "Image_C" ]; then
+					echo "SysRdy Mdata"  > SysRdyMdata.txt
+					flash_eraseall /dev/mtd5
+					flash_eraseall /dev/mtd6
+					flashcp $val /dev/mtd5
+					flashcp $val /dev/mtd6
 				else
-					echo "IMAGE WIC"
-					echo ${val[1]} > imageWIC.txt
+					echo ${val[1]} > ImageWIC.txt
 					xzcat ${val[1]} | dd of=/dev/mmcblk0 bs=32M
 				fi
 			fi

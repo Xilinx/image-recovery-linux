@@ -138,7 +138,9 @@
 				<label id="recALabel" for="recAimg">Image A (QSPI)</label><br>
 				<input type="radio" id="recBimg" name="recimg" value=1>
 				<label id="recBLabel" for="recBimg">Image B (QSPI)</label><br>
-				<input type="radio" id="recWICimg" name="recimg" value=2>
+				<input type="radio" id="recSysRdy" name="recimg" value=2>
+				<label id="recSysRdyLabel" for="recSysRdy">SystemReady Meta Data (QSPI)</label><br>
+				<input type="radio" id="recWICimg" name="recimg" value=3>
 				<label id="recWICLabel" for="recWICimg">Image Wic (eMMC)</label><br> <br>
 				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload()" disabled>Upload</button>
 				<progress id="upld_prgrs" value="0" max="100" style="width:400px;"> 0% </progress>
@@ -213,7 +215,9 @@
 				<label id="recALabel_usb" for="recAimg_usb">Image A (QSPI)</label><br>
 				<input type="radio" id="recBimg_usb" name="recimg_usb" value=1>
 				<label id="recBLabel_usb" for="recBimg_usb">Image B (QSPI)</label><br>
-				<input type="radio" id="recWICimg_usb" name="recimg_usb" value=2>
+				<input type="radio" id="recSysRdy_usb" name="recimg_usb" value=2>
+				<label id="recSysRdyLabel_usb" for="recSysRdy_usb">SystemReady Meta Data (QSPI)</label><br>
+				<input type="radio" id="recWICimg_usb" name="recimg_usb" value=3>
 				<label id="recWICLabel_usb" for="recWICimg_usb">Image Wic (eMMC)</label><br> <br>
 				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload_usb()" enabled>Upload</button>
 				<progress id="upld_prgrs_usb" value="0" max="100" style="width:400px;"> 0% </progress>

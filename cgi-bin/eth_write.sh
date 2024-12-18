@@ -28,15 +28,21 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 			truncate -s $(expr $(stat -c '%s' $CGIBASHOPTS_TMP) - 2) $CGIBASHOPTS_TMP
 			mv $CGIBASHOPTS_TMP "$CGIBASHOPTS_DIR/$val"
 			if [ "$var" = "Image_A" ]; then
-				echo "IMAGE A"  > imageA.txt
+				echo "IMAGE A"  > ImageA.txt
 				flash_eraseall /dev/mtd9
 				flashcp $val /dev/mtd9
 			elif [ "$var" = "Image_B" ]; then
-				echo "IMAGE B"  > imageB.txt
+				echo "IMAGE B"  > ImageB.txt
 				flash_eraseall /dev/mtd12
 				flashcp $val /dev/mtd12
+			elif [ "$var" = "Image_C" ]; then
+				echo "SysRdy Mdata"  > SysRdyMdata.txt
+				flash_eraseall /dev/mtd5
+				flash_eraseall /dev/mtd6
+				flashcp $val /dev/mtd5
+				flashcp $val /dev/mtd6
 			else
-				echo "IMAGE WIC" > imageWIC.txt
+				echo "IMAGE WIC" > ImageWIC.txt
 				xzcat $val | dd of=/dev/mmcblk0 bs=32M
 			fi
 		fi
