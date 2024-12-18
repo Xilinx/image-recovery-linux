@@ -65,30 +65,24 @@ function updateBootImgStatus(objBrd) {
 		var SysImgInfoTbl = document.getElementById("sysimginfotbl");
 
 		if (obj.ImgABootable == true) {
-			document.getElementById("imgAb").checked = true;
-			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Bootable";
+			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Accepted";
 		}
 		else {
-			document.getElementById("imgAnb").checked = true;
-			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Non Bootable";
+			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Rejected";
 		}
 
 		if (obj.ImgBBootable == true) {
-			document.getElementById("imgBb").checked = true;
-			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Bootable";
+			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Accepted";
 		}
 		else {
-			document.getElementById("imgBnb").checked = true;
-			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Non Bootable";
+			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Rejected";
 		}
 
 		if (obj.ReqBootImg == "ImageA") {
-			document.getElementById("reqAimg").checked = true;
-			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Image A";
+			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank A";
 		}
 		else {
-			document.getElementById("reqBimg").checked = true;
-			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Image B";
+			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank B";
 		}
 
 		if (obj.LastBootImg == "ImageA") {
@@ -101,7 +95,7 @@ function updateBootImgStatus(objBrd) {
 				document.getElementById("recWICimg").checked = true;
 				document.getElementById("recWICimg_usb").checked = true;
 			}
-			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Image A";
+			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank A";
 		}
 		else {
 			if (objBrd.SysBoardInfo.BoardName.startsWith("SMK-") ||
@@ -112,31 +106,8 @@ function updateBootImgStatus(objBrd) {
 				document.getElementById("recWICimg").checked = true;
 				document.getElementById("recWICimg_usb").checked = true;
 			}
-			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Image B";
+			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank B";
 		}
-	}
-}
-
-function onCfg() {
-	var obj = { ImgABootable: "_false_", ImgBBootable: "_false_", ReqBootImg:"" };
-	var http = new XMLHttpRequest();
-
-	http.open("POST", "cgi-bin/configure.sh", true);
-	http.setRequestHeader("Content-type","application/json;charset=UTF-8");
-	if(document.getElementById("imgAb").checked)
-		obj.ImgABootable = "_true_";
-	if(document.getElementById("imgBb").checked)
-		obj.ImgBBootable = "_true_";
-
-	if(document.getElementById("reqAimg").checked)
-		obj.ReqBootImg = "_ImageA_";
-	else if(document.getElementById("reqBimg").checked)
-		obj.ReqBootImg = "_ImageB_";
-	var params = JSON.stringify(obj);
-	http.send(params);
-
-	http.onload = function() {
-			updateBootImgStatus(objPage);
 	}
 }
 
