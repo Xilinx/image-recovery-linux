@@ -131,7 +131,7 @@ function onUploadProgress(evt) {
 
 function onUploadSuccess(evt) {
 	document.getElementById('upld_status').value = "Verifying CRC32 . . . . .";
-	crc32Validate();
+	initiateCrcValidation();
 }
 
 function onUploadFailed(evt) {
@@ -475,9 +475,9 @@ function startCalcCrc32(file) {
 }
 
 function initiateCrcValidation() {
-	var obj = { crc: ImgCrc }
+	var obj = { img_name: document.getElementById("img_file").files[0].name, crc: ImgCrc }
 	var http = new XMLHttpRequest();
-	http.open("POST", "validate_crc", true);
+	http.open("POST", "cgi-bin/validate_crc32.sh", true);
 	var params = JSON.stringify(obj);
 	http.send(params);
 
