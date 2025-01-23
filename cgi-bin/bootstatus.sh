@@ -1,39 +1,40 @@
 #!/bin/sh
 
-cat /dev/mtd5 > boot_status.bin
-last_boot=$(hexdump -s 0xC -n4 -e '"%x"' boot_status.bin)
-requested_boot=$(hexdump -s 0x8 -n4 -e '"%x"' boot_status.bin)
-imageA_bootable=$(hexdump -s 0x18 -n1 -e '"%x"' boot_status.bin)
-imageB_bootable=$(hexdump -s 0x19 -n1 -e '"%x"' boot_status.bin)
-rm boot_status.bin
+cat /dev/mtd5 > sys_mdata.bin
+bankA_status=$(hexdump -s 0x18 -n1 -e '"%x"' sys_mdata.bin)
+bankB_status=$(hexdump -s 0x19 -n1 -e '"%x"' sys_mdata.bin)
+active_bank=$(hexdump -s 0x8 -n4 -e '"%x"' sys_mdata.bin)
+prev_active_bank=$(hexdump -s 0xC -n4 -e '"%x"' sys_mdata.bin)
+rm sys_mdata.bin
 
-if [ $last_boot = 0 ]; then
-	lst_bt="ImageA"
+if [ $bankA_status = fc ]; then
+	bankA_st=true
 else
-	lst_bt="ImageB"
+	bankA_st=false
 fi
 
-if [ $requested_boot = 0 ]; then
-	req_bt="ImageA"
+if [ $bankB_status = fc ]; then
+	bankB_st=true
 else
-	req_bt="ImageB"
+	bankB_st=false
 fi
 
-if [ $imageA_bootable = fc ]; then
-	imga_btbl=true
+if [ $active_bank = 0 ]; then
+	active_bnk="ImageA"
 else
-	imga_btbl=false
+	active_bnk="ImageB"
 fi
 
-if [ $imageB_bootable = fc ]; then
-	imgb_btbl=true
+if [ $prev_active_bank = 0 ]; then
+	prev_active_bnk="ImageA"
 else
-	imgb_btbl=false
+	prev_active_bnk="ImageB"
 fi
+
 
 
 echo "Content-type: text/html"
 echo ""
 
-echo '{ "ImgABootable":'${imga_btbl}', "ImgBBootable":'${imgb_btbl}', "ReqBootImg":"'${req_bt}'", "LastBootImg":"'${lst_bt}'" }'
+echo '{ "BankAStatus":'${bankA_st}', "BankBStatus":'${bankB_st}', "ActiveBank":"'${active_bnk}'", "PrevActiveBank":"'${prev_active_bnk}'" }'
 

@@ -49,8 +49,6 @@ function onUsbTab() {
 	}
 
 	document.getElementById("recAimg_usb").checked = false;
-	document.getElementById("recBimg_usb").checked = false;
-	document.getElementById("recSysRdy_usb").checked = false;
 	document.getElementById("recWICimg_usb").checked = false;
 	document.getElementById("upld_prgrs_usb").style.visibility = "hidden";
 	document.getElementById("upld_status_usb").style.visibility = "hidden";
@@ -65,50 +63,27 @@ function updateBootImgStatus(objBrd) {
 		var obj = JSON.parse(this.responseText);
 		var SysImgInfoTbl = document.getElementById("sysimginfotbl");
 
-		if (obj.ImgABootable == true) {
+		if (obj.BankAStatus == true)
 			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Accepted";
-		}
-		else {
+		else
 			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Rejected";
-		}
 
-		if (obj.ImgBBootable == true) {
+		if (obj.BankBStatus == true)
 			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Accepted";
-		}
-		else {
+		else
 			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Rejected";
-		}
 
-		if (obj.ReqBootImg == "ImageA") {
+		if (obj.ActiveBank == "ImageA")
 			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank A";
-		}
-		else {
+		else
 			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank B";
-		}
 
-		if (obj.LastBootImg == "ImageA") {
-			if (objBrd.SysBoardInfo.BoardName.startsWith("SMK-") ||
-				objBrd.SysBoardInfo.BoardName.startsWith("SM-K")){
-				document.getElementById("recBimg").checked = true;
-				document.getElementById("recBimg_usb").checked = true;
-			}
-			else {
-				document.getElementById("recWICimg").checked = true;
-				document.getElementById("recWICimg_usb").checked = true;
-			}
+		if (obj.PrevActiveBank == "ImageA")
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank A";
-		}
-		else {
-			if (objBrd.SysBoardInfo.BoardName.startsWith("SMK-") ||
-				objBrd.SysBoardInfo.BoardName.startsWith("SM-K")){
-				document.getElementById("recAimg").checked = true;
-			}
-			else {
-				document.getElementById("recWICimg").checked = true;
-				document.getElementById("recWICimg_usb").checked = true;
-			}
+		else
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank B";
-		}
+
+		document.getElementById("recAimg").checked = true;
 	}
 }
 
@@ -135,13 +110,11 @@ function onUploadSuccess(evt) {
 }
 
 function onUploadFailed(evt) {
-	var imgId = 'A';
+	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recBimg").checked)
-		imgId = 'B';
-	else if (document.getElementById("recSysRdy").checked)
-		imgId = 'C';
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -151,13 +124,11 @@ function onUploadFailed(evt) {
 }
 
 function onUploadCanceled(evt) {
-	var imgId = 'A';
+	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recBimg").checked)
-		imgId = 'B';
-	else if (document.getElementById("recSysRdy").checked)
-		imgId = 'C';
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -171,18 +142,12 @@ function disableAllUsrInputs() {
 	document.getElementById("upld_btn").disabled = true;
 	document.getElementById("recAimg").disabled = true;
 	document.getElementById("recAimg_usb").disabled = true;
-	document.getElementById("recBimg").disabled = true;
-	document.getElementById("recBimg_usb").disabled = true;
-	document.getElementById("recSysRdy").disabled = true;
-	document.getElementById("recSysRdy_usb").disabled = true;
 	document.getElementById("recWICimg").disabled = true;
 	document.getElementById("recWICimg_usb").disabled = true;
 }
 
 function disableAllUsrInputs_usb() {
 	document.getElementById("recAimg_usb").disabled = true;
-	document.getElementById("recBimg_usb").disabled = true;
-	document.getElementById("recSysRdy_usb").disabled = true;
 	document.getElementById("recWICimg_usb").disabled = true;
 }
 
@@ -190,30 +155,23 @@ function enableAllUsrInputs() {
 	document.getElementById("brws_btn").disabled = false;
 	document.getElementById("upld_btn").disabled = false;
 	document.getElementById("sbmt_btn").disabled = false;
+	document.getElementById("recAimg").disabled = false;
 	document.getElementById("recAimg_usb").disabled = false;
-	document.getElementById("recBimg").disabled = false;
-	document.getElementById("recBimg_usb").disabled = false;
-	document.getElementById("recSysRdy").disabled = false;
-	document.getElementById("recSysRdy_usb").disabled = false;
 	document.getElementById("recWICimg").disabled = false;
 	document.getElementById("recWICimg_usb").disabled = false;
 }
 
 function enableAllUsrInputs_usb() {
 	document.getElementById("recAimg_usb").disabled = false;
-	document.getElementById("recBimg_usb").disabled = false;
-	document.getElementById("recSysRdy_usb").disabled = false;
 	document.getElementById("recWICimg_usb").disabled = false;
 }
 
 function initiateImgUpload () {
-	var imgId = "A";
+	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recBimg").checked)
-		imgId = "B";
-	else if (document.getElementById("recSysRdy").checked)
-		imgId = "C";
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -233,13 +191,11 @@ function initiateImgUpload () {
 }
 
 function onUpload() {
-	var imgId = "A";
+	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recBimg").checked)
-		imgId = "B";
-	else if (document.getElementById("recSysRdy").checked)
-		imgId = "C";
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -248,15 +204,14 @@ function onUpload() {
 
 	var imgFile = document.getElementById("img_file").files[0];
 	extension = imgFile.name.split('.').pop() + '';
-	if (((imgId == "A") || (imgId == "B")) && (extension.toUpperCase() != "BIN")) {
+	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
 	}
 	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
 	}
 	else {
-
-		if (confirm("Are you sure you want to update image " + imgId + "?")) {
+		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
 			disableAllUsrInputs();
 			document.getElementById("upld_status").style.visibility = "visible";
 			document.getElementById('upld_status').value = "Calculating CRC32 . . . . .";
@@ -324,11 +279,7 @@ function onUpload_usb() {
 	}
 
 	if (document.getElementById("recAimg_usb").checked)
-		imgId = "A";
-	else if (document.getElementById("recBimg_usb").checked)
-		imgId = "B";
-	else if (document.getElementById("recSysRdy_usb").checked)
-		imgId = "C";
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg_usb").checked)
 		imgId = "WIC";
 	
@@ -344,14 +295,14 @@ function onUpload_usb() {
 	progressBar.value = 0;
 	
 	extension = imgFile.split('.').pop() + '';
-	if (((imgId == "A") || (imgId == "B")) && (extension.toUpperCase() != "BIN")) {
+	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
 	}
 	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
 	}
 	else {
-		if (confirm("Are you sure you want to update image " + imgId + "?")) {
+		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
 			disableAllUsrInputs_usb();
 			document.getElementById("upld_prgrs_usb").style.visibility = "visible";
 			initiateImgUpload_usb(imgId, imgFile)
@@ -387,13 +338,11 @@ function flashEraseStatus(imgId) {
 }
 
 function flashErase() {
-	var imgId = 'A';
+	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recBimg").checked)
-		imgId = 'B';
-	else if (document.getElementById("recSysRdy").checked)
-		imgId = 'C';
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
 		imgId = "WIC"
 
@@ -483,19 +432,17 @@ function initiateCrcValidation() {
 
 	http.onload = function() {
 		var obj = JSON.parse(this.responseText);
-		var imgId = 'A';
+		var imgId = null;
 		var imgFile = document.getElementById("img_file").files[0];
 
-		if (document.getElementById("recBimg").checked)
-			imgId = 'B';
-		else if (document.getElementById("recSysRdy").checked)
-			imgId = 'C';
-		else if (document.getElementById("recWICimg").checked)
-			imgId = "WIC"
+	if (document.getElementById("recAimg").checked)
+		imgId = "FLASH";
+	else if (document.getElementById("recWICimg").checked)
+		imgId = "WIC"
 
 		if(obj.Status == "Success") {
 			document.getElementById('upld_status').value = "Upload successful . . . . .";
-			alert("Successfully updated image " + imgId);
+			alert("Successfully updated "+ imgId +" image");
 		}
 		else {
 			document.getElementById('upld_status').value = "Upload failed . . . . .";
