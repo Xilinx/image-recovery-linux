@@ -50,7 +50,21 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				fi
 			else
 				echo "IMAGE WIC" > ImageWIC.txt
-				xzcat $val | dd of=/dev/mmcblk0 bs=32M
+				extension="${val##*.}"
+				filename="${val%.*}"
+				if [ "$extension" = "xz" ]; then
+					if [ -f "$filename.bmap" ]; then
+						xzcat $val | bmap-writer - $filename.bmap /dev/mmcblk0
+					else
+						xzcat $val | dd of=/dev/mmcblk0 bs=32M
+					fi
+				elif [ "$extension" = "wic" ]; then
+					if [ -f "$filename.wic.bmap" ]; then
+						bmap-writer $val $filename.wic.bmap /dev/mmcblk0
+					else
+						dd if=$val of=/dev/mmcblk0
+					fi
+				fi
 			fi
 		fi
 	    fi

@@ -207,7 +207,7 @@ function onUpload() {
 	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
 	}
-	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ")) {
+	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
 	}
 	else {
@@ -298,7 +298,7 @@ function onUpload_usb() {
 	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
 	}
-	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ")) {
+	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
 	}
 	else {
@@ -435,22 +435,32 @@ function initiateCrcValidation() {
 		var imgId = null;
 		var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recAimg").checked)
-		imgId = "FLASH";
-	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		if (document.getElementById("recAimg").checked)
+			imgId = "FLASH";
+		else if (document.getElementById("recWICimg").checked)
+			imgId = "WIC"
 
-		if(obj.Status == "Success") {
-			document.getElementById('upld_status').value = "Upload successful . . . . .";
-			alert("Successfully updated "+ imgId +" image");
-		}
-		else {
-			document.getElementById('upld_status').value = "Upload failed . . . . .";
-			alert("CRC check failed after downloading image " + imgId);
+		split_file_name = imgFile.name.split('.');
+		extension = split_file_name.pop() + '';
+		ext_imgFile = split_file_name.slice(0, -1).join('.') + ".wic.xz";
+		if (extension.toUpperCase() == "BMAP") {
+			document.getElementById("img_file").files[0] = ext_imgFile;
+			onBrws();
+			ext_imgFile.click();
+			onUpload();
 		}
 
-		updateBootImgStatus(objPage);
-		enableAllUsrInputs();
+		if (extension.toUpperCase() != "BMAP") {
+			if(obj.Status == "Success") {
+				document.getElementById('upld_status').value = "Upload successful . . . . .";
+				alert("Successfully updated "+ imgId +" image");
+			} else {
+				document.getElementById('upld_status').value = "Upload failed . . . . .";
+				alert("CRC check failed after downloading image " + imgId);
+			}
+				updateBootImgStatus(objPage);
+				enableAllUsrInputs();
+		}
 	}
 }
 
