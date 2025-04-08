@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cat /sys/bus/i2c/devices/1-0054/eeprom > sysinfo.bin
+cat /sys/bus/i2c/devices/*/eeprom > sysinfo.bin
 brdnm=$(hexdump -s 0x16 -n6 -e '"%c"' sysinfo.bin)
 revnum=$(hexdump -s 0x44 -n8 -e '"%c"' sysinfo.bin)
 srlnum=$(hexdump -s 0x27 -n16 -e '"%c"' sysinfo.bin)

@@ -1,28 +1,25 @@
 #!/bin/sh
+ 
+for i in {2..3}
+do 
+	#echo "/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0"
+	if [ -L "/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0" ]; then
+		#echo "USB device found on $i"
+		if [ ! -d ./usb_disk ]; then
+			mkdir usb_disk
+		fi
+		if ! mountpoint -q ./usb_disk; then
+			mount /dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0-part1 usb_disk
+		fi
 
-part=a
-
-while true ; do
-  #echo $part
-  if [ -r "/dev/sd${part}1" ]; then
-    #echo "USB device found"
-    if [ ! -d ./usb_disk ]; then
-        mkdir usb_disk
-
-    fi
-    if ! mountpoint -q ./usb_disk; then
-        mount "/dev/sd${part}1" usb_disk
-    fi
-
-    echo "Content-type: text/html"
-    echo ""
-    dir=./usb_disk
-    for files in "$dir"/*
-    do
-      echo "$files"
-    done
-    break
-  fi
-  part=$(echo "$part" | tr "0-9a-z" "1-9a-z_")
+		echo "Content-type: text/html"
+		echo ""
+		dir=./usb_disk
+		for files in "$dir"/*
+		do
+			filename=$(basename $files)
+			echo "$filename"
+		done
+		break
+	fi
 done
-
