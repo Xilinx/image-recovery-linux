@@ -36,6 +36,10 @@ function onPageLoad() {
 		updateBootImgStatus(objPage);
 	}
 
+	document.getElementById("fileName").value = "";
+	document.getElementById('fileSize').value = "";
+	document.getElementById("recAimg").checked = false;
+	document.getElementById("recWICimg").checked = false;
 	document.getElementById("upld_btn").addEventListener("CrcDone", onCrcComplete);
 	document.getElementById("upld_btn").addEventListener("FlashEraseDone", initiateImgUpload);
 	document.body.addEventListener('DOMContentLoaded', OpenTab(event, 'System Information'));
@@ -82,8 +86,6 @@ function updateBootImgStatus(objBrd) {
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank A";
 		else
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank B";
-
-		document.getElementById("recAimg").checked = true;
 	}
 }
 
@@ -154,7 +156,6 @@ function disableAllUsrInputs_usb() {
 function enableAllUsrInputs() {
 	document.getElementById("brws_btn").disabled = false;
 	document.getElementById("upld_btn").disabled = false;
-	document.getElementById("sbmt_btn").disabled = false;
 	document.getElementById("recAimg").disabled = false;
 	document.getElementById("recAimg_usb").disabled = false;
 	document.getElementById("recWICimg").disabled = false;
@@ -194,10 +195,14 @@ function onUpload() {
 	var imgId = null;
 	var imgFile = document.getElementById("img_file").files[0];
 
-	if (document.getElementById("recAimg").checked)
+	if (document.getElementById("recAimg").checked) {
 		imgId = "FLASH";
-	else if (document.getElementById("recWICimg").checked)
+	} else if (document.getElementById("recWICimg").checked) {
 		imgId = "WIC"
+	} else {
+		alert("Please select the appropriate radio button");
+		return
+	}
 
 	var progressBar = document.getElementById("upld_prgrs");
 	progressBar.value = 0;
@@ -205,10 +210,10 @@ function onUpload() {
 	var imgFile = document.getElementById("img_file").files[0];
 	extension = imgFile.name.split('.').pop() + '';
 	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
-		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
+		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
 	}
 	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
-		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
+		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
 	}
 	else {
 		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
@@ -229,18 +234,17 @@ function onBrws() {
 			document.getElementById("upld_btn").disabled = false;
 			document.getElementById("fileName").setAttribute("fd", file);
 			document.getElementById("fileName").value = file.name;
-			var fileSize = 0;
+			var fileSizeVar = 0;
 			if (file.size >= 1073741824)
-					fileSize = (Math.round(file.size * 100 / 1073741824) / 100).toString() + ' GB';
+					fileSizeVar = (Math.round(file.size * 100 / 1073741824) / 100).toString() + ' GB';
 			else if (file.size >= 1048576)
-					fileSize = (Math.round(file.size * 100 / 1048576) / 100).toString() + ' MB';
+					fileSizeVar = (Math.round(file.size * 100 / 1048576) / 100).toString() + ' MB';
 			else if (file.size >= 1024)
-					fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + ' Kb';
+					fileSizeVar = (Math.round(file.size * 100 / 1024) / 100).toString() + ' Kb';
 			else
-					fileSize = file.size + 'bytes';
+					fileSizeVar = file.size + 'bytes';
 
-			var divfileSize = document.getElementById('fileSize');
-			divfileSize.value = fileSize;
+			document.getElementById('fileSize').value = fileSizeVar;
 			document.getElementById("upld_prgrs").value = 0;
 			document.getElementById("upld_prgrs").style.visibility="hidden";
 			document.getElementById("upld_status").style.visibility = "hidden";
@@ -296,10 +300,10 @@ function onUpload_usb() {
 	
 	extension = imgFile.split('.').pop() + '';
 	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
-		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
+		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
 	}
 	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
-		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
+		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
 	}
 	else {
 		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
@@ -347,7 +351,7 @@ function flashErase() {
 		imgId = "WIC"
 
 	var xhr = new XMLHttpRequest();
-	xhr.open("GET", "flash_erase_img" + imgId, true);
+	xhr.open("GET", "cgi-bin/erase.sh", true);
 	document.getElementById("upld_prgrs").style.visibility = "visible";
 	document.getElementById('upld_status').value = "Erasing Flash . . . . .";
 	document.getElementById("upld_prgrs").value = 0;
@@ -446,7 +450,7 @@ function initiateCrcValidation() {
 		if (extension.toUpperCase() == "BMAP") {
 			document.getElementById("img_file").files[0] = ext_imgFile;
 			onBrws();
-			ext_imgFile.click();
+			imgFile.click();
 			onUpload();
 		}
 
