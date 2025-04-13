@@ -1,11 +1,11 @@
 #!/bin/sh
 
 cat /sys/bus/i2c/devices/*/eeprom > sysinfo.bin
-brdnm=$(hexdump -s 0x16 -n6 -e '"%c"' sysinfo.bin)
-revnum=$(hexdump -s 0x44 -n8 -e '"%c"' sysinfo.bin)
-srlnum=$(hexdump -s 0x27 -n16 -e '"%c"' sysinfo.bin)
-prtnum=$(hexdump -s 0x38 -n9 -e '"%c"' sysinfo.bin)
-uuid=$(hexdump -s 0x56 -n16 -e '"%X"' sysinfo.bin)
+brdnm=$(hexdump -s 0x16 -n6 -e '8/1 "%c"' sysinfo.bin | tr -d '\000')
+revnum=$(hexdump -s 0x44 -n8 -e '8/1 "%c"' sysinfo.bin | tr -d '\000')
+srlnum=$(hexdump -s 0x27 -n16 -e '8/1 "%c"' sysinfo.bin | tr -d '\000')
+prtnum=$(hexdump -s 0x38 -n9 -e '8/1 "%c"' sysinfo.bin | tr -d '\000')
+uuid=$(hexdump -s 0x56 -n16 -e '8/1 "%X"' sysinfo.bin | tr -d '\000')
 rm sysinfo.bin
 
 echo "Content-type: text/html"
