@@ -1,4 +1,4 @@
-var objPage;
+var objPage, dotInterval;
 
 function onPageLoad() {
 	document.getElementById("upld_prgrs").style.visibility = "hidden";
@@ -102,11 +102,15 @@ function onUploadProgress(evt) {
 		}
 		progressBar.max = evt.total;
 		progressBar.value = evt.loaded;
+	}
 
+	if (progressBar.value == progressBar.max) {
+		startProcessing();
 	}
 }
 
 function onUploadSuccess(evt) {
+	stopProcessing();
 	document.getElementById('upld_status').value = "Verifying CRC32 . . . . .";
 	initiateCrcValidation();
 }
@@ -504,4 +508,20 @@ function OpenTab(evt, tabName) {
 	document.getElementById(tabName).style.display = "block";
 	if(evt) evt.currentTarget.className += " active";
 	else document.querySelector('button.tablinks').className += " active";
+}
+
+function startProcessing() {
+	const statusInput = document.getElementById("upld_status");
+	statusInput.value = "Processing";
+
+	let dotCount = 0;
+	dotInterval = setInterval(() => {
+		dotCount = (dotCount + 1) % 6;
+		statusInput.value = "Processing" + ".".repeat(dotCount);
+	}, 500);
+}
+
+function stopProcessing() {
+	document.getElementById("upld_status").value = "";
+	clearInterval(dotInterval);
 }
