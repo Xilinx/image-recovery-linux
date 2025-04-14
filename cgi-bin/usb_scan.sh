@@ -17,8 +17,8 @@ do
 		dir=./usb_disk
 		for files in "$dir"/*
 		do
-			filename=$(basename $files)
-			echo "$filename"
+			#filename=$(basename $files)
+			echo "$files"
 		done
 		break
 	fi

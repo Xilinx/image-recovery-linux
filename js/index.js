@@ -117,7 +117,6 @@ function onUploadSuccess(evt) {
 
 function onUploadFailed(evt) {
 	var imgId = null;
-	var imgFile = document.getElementById("img_file").files[0];
 
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
@@ -131,7 +130,6 @@ function onUploadFailed(evt) {
 
 function onUploadCanceled(evt) {
 	var imgId = null;
-	var imgFile = document.getElementById("img_file").files[0];
 
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
@@ -313,6 +311,7 @@ function onUpload_usb() {
 		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
 			disableAllUsrInputs_usb();
 			document.getElementById("upld_prgrs_usb").style.visibility = "visible";
+			document.getElementById("upld_status_usb").style.visibility = "visible";
 			initiateImgUpload_usb(imgId, imgFile)
 		}
 	}
@@ -324,8 +323,24 @@ function initiateImgUpload_usb(pImgId, pImgFile) {
 
 	var url = 'Image_' + pImgId + ":" + pImgFile;
 	fd.append(url, null);
+	document.getElementById("upld_prgrs_usb").style.visibility = "visible";
+	document.getElementById('upld_status_usb').value = "Uploading . . . . .";
+	document.getElementById("upld_prgrs_usb").value = 100;
+	startProcessing_usb();
 	xhr.open("POST", "cgi-bin/usb_write.sh", true);
 	xhr.send(fd);
+
+	xhr.onload = function() {
+		var obj = this.responseText;
+		stopProcessing_usb();
+		if(obj == "Success\n") {
+			document.getElementById('upld_status_usb').value = "Upload successful . . . . .";
+			alert("Successfully updated "+ pImgId +" image");
+		} else {
+			document.getElementById('upld_status_usb').value = "Upload failed . . . . .";
+			alert("Failed to updated "+ pImgId +" image");
+		}
+	}
 }
 
 function flashEraseStatus(imgId) {
@@ -481,8 +496,7 @@ function crc32Validate() {
 		var res = this.responseText;
 		if (res == 'ok\n') {
 			document.getElementById('upld_status').value = "Upload successful . . . . .";
-		}
-		else {
+		} else {
 			document.getElementById('upld_status').value = "Upload failed . . . . .";
 		}
 		enableAllUsrInputs();
@@ -517,11 +531,27 @@ function startProcessing() {
 	let dotCount = 0;
 	dotInterval = setInterval(() => {
 		dotCount = (dotCount + 1) % 6;
-		statusInput.value = "Processing" + ".".repeat(dotCount);
+		statusInput.value = "Processing" + " .".repeat(dotCount);
 	}, 500);
 }
 
 function stopProcessing() {
 	document.getElementById("upld_status").value = "";
+	clearInterval(dotInterval);
+}
+
+function startProcessing_usb() {
+	const statusInput = document.getElementById("upld_status_usb");
+	statusInput.value = "Processing";
+
+	let dotCount = 0;
+	dotInterval = setInterval(() => {
+		dotCount = (dotCount + 1) % 6;
+		statusInput.value = "Processing" + " .".repeat(dotCount);
+	}, 500);
+}
+
+function stopProcessing_usb() {
+	document.getElementById("upld_status_usb").value = "";
 	clearInterval(dotInterval);
 }

@@ -209,6 +209,18 @@ table {
 	border-style: hidden;
 }
 
+.upld_status_usb {
+	font-weight: 600;
+	font-size: 15px;
+	width: 450px;
+	color: gray;
+	outline: none;
+	vertical-align: middle;
+	padding: 8px 2px 8px 140px;
+	vertical-align: middle;
+	border-style: hidden;
+}
+
 .row_body:after {
 	content: "";
 	display: table;
