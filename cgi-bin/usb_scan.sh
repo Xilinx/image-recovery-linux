@@ -1,25 +1,40 @@
 #!/bin/sh
- 
-for i in {2..3}
-do 
-	#echo "/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0"
-	if [ -L "/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0" ]; then
-		#echo "USB device found on $i"
-		if [ ! -d ./usb_disk ]; then
-			mkdir usb_disk
-		fi
-		if ! mountpoint -q ./usb_disk; then
-			mount /dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.${i}:1.0-scsi-0:0:0:0-part1 usb_disk
-		fi
 
-		echo "Content-type: text/html"
-		echo ""
-		dir=./usb_disk
-		for files in "$dir"/*
-		do
-			#filename=$(basename $files)
-			echo "$files"
-		done
+usb_part=1
+
+for dev in /dev/disk/by-path/*usb*; do
+	real_dev=$(readlink -f "$dev")
+	model=$(udevadm info --query=property --name="$real_dev" | grep '^ID_MODEL=' | cut -d= -f2)
+
+	# Match common USB stick patterns (adjust as needed)
+	if echo "$model" | grep -Eqi 'SanDisk|Cruzer|Kingston|Flash|USB|Toshiba|TransMemory|Transcend|JetFlash|JFV'; then
+		#echo "USB stick found: $dev -> $real_dev (Model: $model)"
 		break
 	fi
+done
+
+if ! echo "$model" | grep -Eqi 'SanDisk|Cruzer|Kingston|Flash|USB'; then
+	echo "Content-type: text/html"
+	echo ""
+	echo "USB stick not found"
+	exit 1
+fi
+
+if [ ! -d ./usb_disk ]; then
+	mkdir usb_disk
+fi
+
+# Check if device is already mounted at the mount point
+if ! grep -q "usb_disk" /proc/mounts; then
+    #echo "Mounting to usb_disk..."
+    mount $real_dev${usb_part} usb_disk
+fi
+
+echo "Content-type: text/html"
+echo ""
+dir=./usb_disk
+for files in "$dir"/*
+do
+	#filename=$(basename $files)
+	echo "$files"
 done
