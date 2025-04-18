@@ -50,19 +50,34 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				fi
 			else
 				echo "IMAGE WIC" > ImageWIC.txt
+				for dev in /dev/disk/by-path/*usb*; do
+					real_dev=$(readlink -f "$dev")
+					model=$(udevadm info --query=property --name="$real_dev" | grep '^ID_MODEL=' | cut -d= -f2)
+
+					if echo "$model" | grep -Eqi 'SD|Combo|Reader'; then
+						#echo "SD card found via USB hub: $dev -> $real_dev (Model: $model)"
+						break
+					else
+						#echo "SD Card not found"
+						echo "Content-type: text/html"
+						echo ""
+						echo 'Fail'
+						exit 1
+					fi
+				done
 				extension="${val##*.}"
 				filename="${val%.*}"
 				if [ "$extension" = "xz" ]; then
 					if [ -f "$filename.bmap" ]; then
-						xzcat $val | bmap-writer - $filename.bmap /dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0-scsi-0:0:0:0
+						xzcat $val | bmap-writer - $filename.bmap $real_dev
 					else
-						xzcat $val | dd of=/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0-scsi-0:0:0:0 bs=32M
+						xzcat $val | dd of=$real_dev bs=32M
 					fi
 				elif [ "$extension" = "wic" ]; then
 					if [ -f "$filename.wic.bmap" ]; then
-						bmap-writer $val $filename.wic.bmap /dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0-scsi-0:0:0:0
+						bmap-writer $val $filename.wic.bmap $real_dev
 					else
-						dd if=$val of=/dev/disk/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0-scsi-0:0:0:0
+						dd if=$val of=$real_dev
 					fi
 				fi
 			fi
