@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
 
 cat /sys/bus/i2c/devices/*/eeprom > sysinfo.bin
 brdnm=$(hexdump -s 0x16 -n6 -e '8/1 "%c"' sysinfo.bin | tr -d '\000')

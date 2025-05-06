@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
 
 cat /dev/mtd3 > update_confg.bin
 confg_boot=$(cat)

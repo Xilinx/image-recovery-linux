@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
 
 usb_part=1
 

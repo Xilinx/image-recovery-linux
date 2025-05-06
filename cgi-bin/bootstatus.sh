@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
 
 cat /dev/mtd5 > sys_mdata.bin
 bankA_status=$(hexdump -s 0x18 -n1 -e '"%x"' sys_mdata.bin)
