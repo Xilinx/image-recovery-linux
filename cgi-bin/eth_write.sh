@@ -51,7 +51,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				fi
 			else
 				echo "IMAGE WIC" > ImageWIC.txt
-				for dev in /dev/disk/by-path/*usb*; do
+				for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc*; do
 					real_dev=$(readlink -f "$dev")
 					model=$(udevadm info --query=property --name="$real_dev" | grep '^ID_MODEL=' | cut -d= -f2)
 
@@ -62,8 +62,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 						#echo "SD Card not found"
 						echo "Content-type: text/html"
 						echo ""
-						echo 'Fail'
-						exit 1
+						break
 					fi
 				done
 				extension="${val##*.}"
