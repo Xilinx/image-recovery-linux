@@ -51,20 +51,29 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				fi
 			else
 				echo "IMAGE WIC" > ImageWIC.txt
+				real_dev=""
 				for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc*; do
-					real_dev=$(readlink -f "$dev")
-					model=$(udevadm info --query=property --name="$real_dev" | grep '^ID_MODEL=' | cut -d= -f2)
-
-					if echo "$model" | grep -Eqi 'SD|Combo|Reader'; then
-						#echo "SD card found via USB hub: $dev -> $real_dev (Model: $model)"
-						break
-					else
-						#echo "SD Card not found"
-						echo "Content-type: text/html"
-						echo ""
+					[ -e "$dev" ] || continue
+					resolved=$(readlink -f "$dev")
+					if [ ! -b "$resolved" ]; then
+						continue
+					fi
+					model=$(udevadm info --query=property --name="$resolved" 2>/dev/null | grep '^ID_MODEL=' | cut -d= -f2 || echo "")
+					if echo "$model" | grep -Eqi 'SD|Combo|Reader|MMC|eMMC'; then
+						real_dev="$resolved"
 						break
 					fi
 				done
+				if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
+					real_dev="/dev/mmcblk0"
+					echo "Fallback to default eMMC"
+				fi
+				if [ ! -b "$real_dev" ]; then
+					#echo "SD Card not found"
+					echo "Content-type: text/html"
+					echo "ERROR: No valid block device found for flashing"
+					exit 1
+				fi
 				extension="${val##*.}"
 				filename="${val%.*}"
 				if [ "$extension" = "xz" ]; then
