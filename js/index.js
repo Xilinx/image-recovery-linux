@@ -22,13 +22,22 @@ function onPageLoad() {
 		table.rows[3].cells[1].innerHTML = objPage.SysBoardInfo.PartNo;
 		table.rows[4].cells[1].innerHTML = objPage.SysBoardInfo.UUID;
 
+		const ccInfo = objPage.CcInfo;
+		const isCarrierCardPresent = ccInfo.BoardName && ccInfo.BoardName.trim() !== "";
 		table = document.getElementById("cctbl");
-		table.rows[0].cells[1].innerHTML = objPage.CcInfo.BoardName;
-		table.rows[1].cells[1].innerHTML = objPage.CcInfo.RevisionNo;
-		table.rows[2].cells[1].innerHTML = objPage.CcInfo.SerialNo;
-		table.rows[3].cells[1].innerHTML = objPage.CcInfo.PartNo;
-		table.rows[4].cells[1].innerHTML = objPage.CcInfo.UUID;
 
+		if (isCarrierCardPresent) {
+			table.rows[0].cells[1].innerHTML = objPage.CcInfo.BoardName;
+			table.rows[1].cells[1].innerHTML = objPage.CcInfo.RevisionNo;
+			table.rows[2].cells[1].innerHTML = objPage.CcInfo.SerialNo;
+			table.rows[3].cells[1].innerHTML = objPage.CcInfo.PartNo;
+			table.rows[4].cells[1].innerHTML = objPage.CcInfo.UUID;
+		}
+		else {
+			if (table) {
+				table.parentElement.style.display = "none";
+			}
+		}
 		if (objPage.SysBoardInfo.BoardName.startsWith("SMK-")) {
 			document.getElementById("recWICLabel_usb").style.display = "none";
 			document.getElementById("recWICimg").disabled = true;
@@ -219,7 +228,7 @@ function onUpload() {
 		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
 	}
 	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
-		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
+		alert("Invalid file type for image " + imgId + ", File should be  .wic , .wic.xz ,.wic.bmap type.");
 	}
 	else {
 		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
@@ -340,6 +349,7 @@ function initiateImgUpload_usb(pImgId, pImgFile) {
 		if(obj == "Success\n") {
 			document.getElementById('upld_status_usb').value = "Upload successful . . . . .";
 			alert("Successfully updated "+ pImgId +" image");
+			onPageLoad();
 		} else {
 			document.getElementById('upld_status_usb').value = "Upload failed . . . . .";
 			alert("Failed to updated "+ pImgId +" image");
@@ -481,6 +491,7 @@ function initiateCrcValidation() {
 			if(obj.Status == "Success") {
 				document.getElementById('upld_status').value = "Upload successful . . . . .";
 				alert("Successfully updated "+ imgId +" image");
+				onPageLoad();
 			} else {
 				document.getElementById('upld_status').value = "Upload failed . . . . .";
 				alert("CRC check failed after downloading image " + imgId);
