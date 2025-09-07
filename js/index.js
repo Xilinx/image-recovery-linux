@@ -4,6 +4,30 @@
 */
 var objPage, dotInterval;
 
+function handleFlashResponse(responseText, target) {
+    const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
+    const reasonMatch = responseText.match(/FLASH_REASON=(.+)/);
+
+    const status = statusMatch ? statusMatch[1].trim() : "UNKNOWN";
+    const reason = reasonMatch ? reasonMatch[1].trim() : "No details provided";
+
+    const statusField = document.getElementById(target);
+    statusField.value = `Status: ${status} — ${reason}`;
+    statusField.style.visibility = "visible";
+
+    // Optional: color feedback
+    if (status === "SUCCESS") {
+        statusField.style.borderColor = "#2ecc71";
+        statusField.style.backgroundColor = "#e6f9e6";
+    } else if (status === "FAIL") {
+        statusField.style.borderColor = "#e74c3c";
+        statusField.style.backgroundColor = "#ffe6e6";
+    } else {
+        statusField.style.borderColor = "#f1c40f";
+        statusField.style.backgroundColor = "#fffbe6";
+    }
+}
+
 function onPageLoad() {
 	document.getElementById("upld_prgrs").style.visibility = "hidden";
 	document.getElementById("upld_status").style.visibility = "hidden";
@@ -190,7 +214,10 @@ function initiateImgUpload () {
 	document.getElementById('upld_status').value = "Erasing Flash . . . . .";
 	document.getElementById("upld_prgrs").value = 0;
 	xhr.upload.addEventListener("progress", onUploadProgress, false);
-	xhr.addEventListener("load", onUploadSuccess, false);
+	xhr.addEventListener("load", function() {
+		onUploadSuccess();
+		handleFlashResponse(xhr.responseText, "eth_flash_status");
+	}, false);
 	xhr.addEventListener("error", onUploadFailed, false);
 	xhr.addEventListener("abort", onUploadCanceled, false);
 	xhr.open("POST", "cgi-bin/eth_write.sh", true);
@@ -228,6 +255,19 @@ function onUpload() {
 			document.getElementById('upld_status').value = "Calculating CRC32 . . . . .";
 			document.getElementById("upld_prgrs").style.visibility = "visible";
 			startCalcCrc32(imgFile);
+			var formData = new FormData();
+			formData.append("Image_WIC", imgFile);
+			formData.append("recimg", imgId);
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", "/cgi-bin/eth_write.sh", true);
+			xhr.onload = function () {
+				var response = xhr.responseText;
+				document.getElementById("eth_flash_status").value = response || "No response from server.";
+			};
+			xhr.onerror = function () {
+				document.getElementById("eth_flash_status").value = "Error during upload.";
+			};
+			xhr.send(formData);
 		}
 	}
 }
@@ -278,47 +318,74 @@ function onBrws_usb() {
 
 function onUpload_usb() {
 	var imgId = null;
-	var imgFile = null;
-	var ele = document.getElementsByName('optradio');
-
-	for (i = 0; i < ele.length; i++) {
-		if (ele[i].checked){
-			imgFile	= ele[i].value;
-			break;
-		}
-	}
+	var imgFile = document.getElementById("img_file").files[0];
 
 	if (document.getElementById("recAimg_usb").checked)
 		imgId = "FLASH";
 	else if (document.getElementById("recWICimg_usb").checked)
 		imgId = "WIC";
-	
-	if(imgId == null){
-		alert("Please select image to be recovered");
-		return;
-	}else if(imgFile == null) {
-		alert("Please select image file to be updated");
+
+	if (!imgId) {
+		alert("Please select image to be recovered.");
 		return;
 	}
 
-	var progressBar = document.getElementById("upld_prgrs_usb");
+	if (!imgFile) {
+		alert("Please select an image file to upload.");
+		return;
+	}
+
+	const extension = imgFile.name.split('.').pop().toUpperCase();
+	if (imgId === "FLASH" && extension !== "BIN") {
+		alert("Invalid file type for FLASH image. File must be .bin");
+		return;
+	}
+	if (imgId === "WIC" && !["WIC", "XZ", "BMAP"].includes(extension)) {
+		alert("Invalid file type for WIC image. File must be .wic, .xz, or .bmap");
+		return;
+	}
+
+	if (!confirm(`Are you sure you want to update the ${imgId} image?`)) return;
+
+	disableAllUsrInputs_usb();
+	const progressBar = document.getElementById("upld_prgrs_usb");
+	const statusBox = document.getElementById("upld_status_usb");
+
+	progressBar.style.visibility = "visible";
+	statusBox.style.visibility = "visible";
 	progressBar.value = 0;
-	
-	extension = imgFile.split('.').pop() + '';
-	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
-		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
-	}
-	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
-		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
-	}
-	else {
-		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
-			disableAllUsrInputs_usb();
-			document.getElementById("upld_prgrs_usb").style.visibility = "visible";
-			document.getElementById("upld_status_usb").style.visibility = "visible";
-			initiateImgUpload_usb(imgId, imgFile)
+	statusBox.value = "Starting upload...";
+
+	const formData = new FormData();
+	formData.append("Image_WIC", imgFile);
+	formData.append("recimg", imgId);
+
+	const xhr = new XMLHttpRequest();
+	xhr.open("POST", "/cgi-bin/usb_write.sh", true);
+
+	xhr.upload.onprogress = function (e) {
+		if (e.lengthComputable) {
+			const percent = Math.round((e.loaded / e.total) * 100);
+			progressBar.value = percent;
+			statusBox.value = `Uploading... ${percent}%`;
 		}
-	}
+	};
+
+	xhr.onload = function () {
+		stopProcessing_usb();
+		progressBar.value = 100;
+		handleFlashResponse(xhr.responseText, "usb_flash_status");
+		enableAllUsrInputs_usb();
+	};
+
+	xhr.onerror = function () {
+		stopProcessing_usb();
+		statusBox.value = "Error during upload.";
+		enableAllUsrInputs_usb();
+	};
+
+	xhr.send(formData);
+	startProcessing_usb();
 }
 
 function initiateImgUpload_usb(pImgId, pImgFile) {

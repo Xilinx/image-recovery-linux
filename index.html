@@ -132,7 +132,7 @@
 		<div class="column_body">
 			<h2>Ethernet Recovery Image</h2>
 			<hr>
-			<div style="padding:1px 0 0 10px">
+			<form id="eth_form" action="/cgi-bin/eth_write.sh" method="POST" enctype="multipart/form-data" style="padding:1px 0 0 10px">
 				<button type="button" id="brws_btn" class="btn btn_brws" onclick="onBrws()">Browse</button>
 				<input type:"text" class="file_info file_name" id="fileName" readonly>
 				<input type:"text" class="file_info" id="fileSize" readonly>
@@ -144,9 +144,11 @@
 				<label id="recWICLabel" for="recWICimg">Wic Image (eMMC/SD)</label><br> <br>
 				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload()" disabled>Upload</button>
 				<progress id="upld_prgrs" value="0" max="100" style="width:400px;"> 0% </progress>
-				<br><input type:"text" class="upld_status" id="upld_status" readonly>
-			</div>
+				<br><input type="text" class="upld_status" id="upld_status" readonly><br>
+				<textarea id="eth_flash_status" class="upld_status" readonly rows="3" style="width:100%;"></textarea>
+			</form>
 		</div>
+	</div>
 		
 		<div class="footer">
 			<b>&copy 2024 AMD</b>
@@ -216,8 +218,11 @@
 				<input type="radio" id="recWICimg_usb" name="recimg_usb" value=3>
 				<label id="recWICLabel_usb" for="recWICimg_usb">Wic Image (eMMC/SD)</label><br> <br>
 				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload_usb()" enabled>Upload</button>
-				<progress id="upld_prgrs_usb" value="0" max="100" style="width:400px;"> 0% </progress>
-				<br><input type:"text" class="upld_status_usb" id="upld_status_usb" readonly>
+				<progress id="upld_prgrs_usb" value="0" max="100" style="width:400px; visibility:hidden;">0%</progress><br>
+
+				<input type="text" class="upld_status_usb" id="upld_status_usb" readonly style="width:400px; visibility:hidden;"><br>
+
+				<textarea id="usb_flash_status" class="upld_status_usb" readonly rows="3" style="width:100%; visibility:hidden;"></textarea>
 			</div>
 		</div>
 
