@@ -7,7 +7,7 @@ echo ""
 
 echo "<html><body><pre>"
 
-export CGIBASHOPTS_DIR=${PWD}
+export CGIBASHOPTS_DIR="${PWD}"
 CGIBASHOPTS_TMP="$CGIBASHOPTS_DIR.tmp"
 
 cat /dev/mtd5 > sys_mdata.bin
@@ -21,10 +21,10 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 			if [[ $line =~ ^Content-Disposition:\ *form-data[\;,]\ *name=\"([^\"]+)\"(\;\ *filename=\"([^\"]+)\")? ]]; then
 				read -ra val <<< "${BASH_REMATCH[1]}"
 				if [ "${val[0]}" = "Image_FLASH" ]; then
-					if [ $active_bank = 0 ]; then
+					if [ "$active_bank" = 0 ]; then
 						echo "IMAGE B"  > ImageB.txt
 						flash_eraseall /dev/mtd12
-						flashcp ${val[1]} /dev/mtd12
+						flashcp "${val[1]}" /dev/mtd12
 						printf "\1" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 						printf "\0" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 						printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=25 count=1 conv=notrunc)
@@ -32,7 +32,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					else
 						echo "IMAGE A"  > ImageA.txt
 						flash_eraseall /dev/mtd9
-						flashcp ${val[1]} /dev/mtd9
+						flashcp "${val[1]}" /dev/mtd9
 						printf "\0" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 						printf "\1" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 						printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=24 count=1 conv=notrunc)
@@ -41,7 +41,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					   echo "FLASH_STATUS=SUCCESS"
 					   echo "FLASH_REASON=Boot image flashed successfully"
 				   else
-					echo ${val[1]} > ImageWIC.txt
+					echo "${val[1]}" > ImageWIC.txt
 					real_dev=""
 					for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc*; do
 						[ -e "$dev" ] || continue
@@ -70,9 +70,9 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					filename="${val[1]%.*}"
 					if [ "$extension" = "bmap" ]; then
 						if [ -f "$filename.xz" ]; then
-							xzcat $filename.xz | bmap-writer - $filename.bmap $real_dev
+							xzcat "$filename.xz" | bmap-writer - "$filename.bmap" "$real_dev"
 						elif [ -f "$filename" ]; then
-							bmap-writer $filename $filename.bmap $real_dev
+							bmap-writer "$filename" "$filename.bmap" "$real_dev"
 						else
 							echo "Content-type: text/html"
 							echo ""
@@ -80,9 +80,9 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 							exit 1
 						fi
 					elif [ "$extension" = "xz" ]; then
-						xzcat $filename.xz | dd of=$real_dev bs=32M
+						xzcat "$filename.xz" | dd of="$real_dev" bs=32M
 					elif [ "$extension" = "wic" ]; then
-						dd if=$filename.wic of=$real_dev
+						dd if="$filename.wic" of="$real_dev"
 						fi
 					fi 
 					echo "FLASH_STATUS=SUCCESS"

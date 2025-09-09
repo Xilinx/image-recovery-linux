@@ -13,4 +13,4 @@ rm sysinfo.bin
 echo "Content-type: text/html"
 echo ""
 
-echo '{"SysBoardInfo":{"BoardName":"'${brdnm}'","RevisionNo":"'${revnum}'","SerialNo":"'${srlnum}'","PartNo":"'${prtnum}'","UUID":"'${uuid^^}'"},"CcInfo":{"BoardName":"","RevisionNo":"","SerialNo":"","PartNo":"","UUID":""}}'
+echo '{"SysBoardInfo":{"BoardName":"'"${brdnm}"'","RevisionNo":"'"${revnum}"'","SerialNo":"'"${srlnum}"'","PartNo":"'"${prtnum}"'","UUID":"'"${uuid^^}"'"},"CcInfo":{"BoardName":"","RevisionNo":"","SerialNo":"","PartNo":"","UUID":""}}'

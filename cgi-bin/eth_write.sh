@@ -7,7 +7,7 @@ echo ""
 
 echo "<html><body><pre>"
 
-export CGIBASHOPTS_DIR=${PWD}
+export CGIBASHOPTS_DIR="${PWD}"
 CGIBASHOPTS_TMP="$CGIBASHOPTS_DIR.tmp"
 
 cat /dev/mtd5 > sys_mdata.bin
@@ -33,14 +33,14 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 		    read -r line
 		done
 		if [ "$type" = bin ]; then # binary file upload
-			sed '{$d}' >$CGIBASHOPTS_TMP
-			truncate -s $(expr $(stat -c '%s' $CGIBASHOPTS_TMP) - 2) $CGIBASHOPTS_TMP
-			mv $CGIBASHOPTS_TMP "$CGIBASHOPTS_DIR/$val"
+			sed '{$d}' >"$CGIBASHOPTS_TMP"
+			truncate -s $(expr $(stat -c '%s' "$CGIBASHOPTS_TMP") - 2) "$CGIBASHOPTS_TMP"
+			mv "$CGIBASHOPTS_TMP" "$CGIBASHOPTS_DIR/$val"
 			if [ "$var" = "Image_FLASH" ]; then
-				if [ $active_bank = 0 ]; then
+				if [ "$active_bank" = 0 ]; then
 					echo "IMAGE B"  > ImageB.txt
 					flash_eraseall /dev/mtd12
-					flashcp $val /dev/mtd12
+					flashcp "$val" /dev/mtd12
 					printf "\1" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 					printf "\0" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 					printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=25 count=1 conv=notrunc)
@@ -48,7 +48,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				else
 					echo "IMAGE A"  > ImageA.txt
 					flash_eraseall /dev/mtd9
-					flashcp $val /dev/mtd9
+					flashcp "$val" /dev/mtd9
 					printf "\0" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 					printf "\1" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 					printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=24 count=1 conv=notrunc)
@@ -86,15 +86,15 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				filename="${val%.*}"
 				if [ "$extension" = "xz" ]; then
 					if [ -f "$filename.bmap" ]; then
-						xzcat $val | bmap-writer - $filename.bmap $real_dev
+						xzcat "$val" | bmap-writer - "$filename.bmap" "$real_dev"
 					else
-						xzcat $val | dd of=$real_dev bs=32M
+						xzcat "$val" | dd of="$real_dev" bs=32M
 					fi
 				elif [ "$extension" = "wic" ]; then
 					if [ -f "$filename.wic.bmap" ]; then
-						bmap-writer $val $filename.wic.bmap $real_dev
+						bmap-writer "$val" "$filename.wic.bmap" "$real_dev"
 					else
-						dd if=$val of=$real_dev
+						dd if="$val" of="$real_dev"
 						fi
 					fi
 					echo "FLASH_STATUS=SUCCESS"
