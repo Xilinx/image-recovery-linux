@@ -224,8 +224,17 @@ function initiateImgUpload () {
 	document.getElementById("upld_prgrs").value = 0;
 	xhr.upload.addEventListener("progress", onUploadProgress, false);
 	xhr.addEventListener("load", function() {
-		onUploadSuccess();
-		handleFlashResponse(xhr.responseText, "eth_flash_status");
+		const responseText = xhr.responseText;
+		handleFlashResponse(responseText, "eth_flash_status");
+
+		const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
+		const status = statusMatch ? statusMatch[1].trim() : "UNKNOWN";
+
+		if (status === "SUCCESS") {
+			onUploadSuccess();
+		} else {
+			onUploadFailed();
+		}
 	}, false);
 	xhr.addEventListener("error", onUploadFailed, false);
 	xhr.addEventListener("abort", onUploadCanceled, false);
@@ -406,9 +415,11 @@ function initiateImgUpload_usb(pImgId, pImgFile) {
 		const status = statusMatch ? statusMatch[1].trim() : "UNKNOWN";
 
 		if (status === "SUCCESS") {
+			document.getElementById('upld_status_usb').value = "Upload successful . . . . .";
 			alert("Successfully updated " + pImgId + " image");
 			onPageLoad();
 		} else if (status === "FAIL") {
+			document.getElementById('upld_status_usb').value = "Upload failed . . . . .";
 			alert("Failed to update " + pImgId + " image");
 		}
 

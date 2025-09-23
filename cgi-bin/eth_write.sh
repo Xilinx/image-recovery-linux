@@ -41,6 +41,11 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					echo "IMAGE B"  > ImageB.txt
 					flash_eraseall /dev/mtd12
 					flashcp $val /dev/mtd12
+					if ! flashcp "$val" /dev/mtd12; then
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=Failed to write image to /dev/mtd12"
+						exit 1
+					fi
 					printf "\1" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 					printf "\0" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 					printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=25 count=1 conv=notrunc)
@@ -49,6 +54,11 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					echo "IMAGE A"  > ImageA.txt
 					flash_eraseall /dev/mtd9
 					flashcp $val /dev/mtd9
+					if ! flashcp "$val" /dev/mtd9; then
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=Failed to write image to /dev/mtd9"
+						exit 1
+					fi
 					printf "\0" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
 					printf "\1" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
 					printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=24 count=1 conv=notrunc)
