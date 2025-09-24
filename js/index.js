@@ -234,6 +234,7 @@ function initiateImgUpload () {
 			onUploadSuccess();
 		} else {
 			onUploadFailed();
+			stopProcessing();
 		}
 	}, false);
 	xhr.addEventListener("error", onUploadFailed, false);
