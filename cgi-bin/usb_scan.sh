@@ -3,19 +3,34 @@
 # SPDX-License-Identifier: MIT
 
 usb_part=1
+usb_dev='SanDisk|Cruzer|Kingston|Flash|USB|Toshiba|TransMemory|Transcend|JetFlash|JFV'
+ufs_dev='MICRON|MT064GBCAV1U31AA'
+
 
 for dev in /dev/disk/by-path/*usb*; do
-	real_dev=$(readlink -f "$dev")
-	model=$(udevadm info --query=property --name="$real_dev" | grep '^ID_MODEL=' | cut -d= -f2)
-
-	# Match common USB stick patterns (adjust as needed)
-	if echo "$model" | grep -Eqi 'SanDisk|Cruzer|Kingston|Flash|USB|Toshiba|TransMemory|Transcend|JetFlash|JFV'; then
-		#echo "USB stick found: $dev -> $real_dev (Model: $model)"
+	[ -b "$dev" ] || continue
+	model=$(udevadm info --query=property --name="$dev" | grep '^ID_MODEL=' | cut -d= -f2)
+	if echo "$model" | grep -Eqi "$usb_dev"; then
+		real_dev="$dev"
+		echo "Detected USB device: $real_dev ($model)"
 		break
 	fi
 done
 
-if ! echo "$model" | grep -Eqi 'SanDisk|Cruzer|Kingston|Flash|USB'; then
+if [ -z "$real_dev" ]; then
+	for dev in /dev/sd*; do
+		[ -b "$dev" ] || continue
+		model=$(udevadm info --query=property --name="$dev" | grep '^ID_MODEL=' | cut -d= -f2)
+		if echo "$model" | grep -Eqi "$ufs_dev"; then
+			real_dev="$dev"
+			echo "Detected UFS device: $real_dev ($model)"
+			break
+		fi
+	done
+fi
+
+
+if [ -z "$real_dev" ]; then
 	echo "Content-type: text/html"
 	echo ""
 	echo "USB stick not found"
