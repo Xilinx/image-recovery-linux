@@ -41,10 +41,15 @@ if [ ! -d ./usb_disk ]; then
 	mkdir usb_disk
 fi
 
-# Check if device is already mounted at the mount point
+base_dev=$(readlink -f "$real_dev")
+
+# mounting the  available partitions.
 if ! grep -q "usb_disk" /proc/mounts; then
-    #echo "Mounting to usb_disk..."
-    mount $real_dev${usb_part} usb_disk
+	for part in $(ls ${base_dev}? 2>/dev/null); do
+		[ -b "$part" ] || continue
+		echo "Attempting to mount $part..."
+		mount "$part" usb_disk && break
+	done
 fi
 
 echo "Content-type: text/html"
