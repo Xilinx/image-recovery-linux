@@ -53,16 +53,24 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 				   else
 					echo ${val[1]} > ImageWIC.txt
 					real_dev=""
-					for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc*; do
+					for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc* /dev/sd*; do
 						[ -e "$dev" ] || continue
 							resolved=$(readlink -f "$dev")
 							if [ ! -b "$resolved" ]; then
 								continue
 							fi
-						 model=$(udevadm info --query=property --name="$resolved" 2>/dev/null | grep '^ID_MODEL=' | cut -d= -f2 || echo "")
-							if echo "$model" | grep -Eqi 'SD|Combo|Reader|MMC|eMMC'; then
-							real_dev="$resolved"
-							break
+							udev_info=$(udevadm info --query=property --name="$resolved" 2>/dev/null)
+							id_bus=$(echo "$udev_info" | grep '^ID_BUS=' | cut -d= -f2)
+							model=$(echo "$udev_info" | grep '^ID_MODEL=' | cut -d= -f2 || echo "")
+
+							# Support UFS devices by detecting ID_BUS=scsi (new storage device type)
+							if [ "$id_bus" = "scsi" ]; then
+								real_dev="$resolved"
+								break
+							elif echo "$model" | grep -Eqi 'SD|Combo|Reader|MMC|eMMC'; then
+								real_dev="$resolved"
+								break
+
 							fi
 						done
 						if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
