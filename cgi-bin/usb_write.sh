@@ -51,28 +51,36 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 					   echo "FLASH_STATUS=SUCCESS"
 					   echo "FLASH_REASON=Boot image flashed successfully"
 				   else
-					echo ${val[1]} > ImageWIC.txt
-					real_dev=""
-					for dev in /dev/disk/by-path/*usb* /dev/disk/by-path/*mmc* /dev/sd*; do
-						[ -e "$dev" ] || continue
-							resolved=$(readlink -f "$dev")
-							if [ ! -b "$resolved" ]; then
-								continue
-							fi
-							udev_info=$(udevadm info --query=property --name="$resolved" 2>/dev/null)
-							id_bus=$(echo "$udev_info" | grep '^ID_BUS=' | cut -d= -f2)
-							model=$(echo "$udev_info" | grep '^ID_MODEL=' | cut -d= -f2 || echo "")
+					   echo ${val[1]} > ImageWIC.txt
+					   real_dev=""
+					   basefile=$(basename "${val[1]}")
+					   if echo "$basefile" | grep -qE '\.wic\.ufs\.(xz|bmap)$'; then
+						   image_type="ufs"
+					   else
+						   image_type="usb"
+					   fi
+					   for dev in /dev/disk/by-path/* /dev/mmcblk* /dev/sd*; do
+						   [ -e "$dev" ] || continue
+						   resolved=$(readlink -f "$dev")
+						   [ -b "$resolved" ] || continue
+						   udev_info=$(udevadm info --query=property --name="$resolved" 2>/dev/null)
+						   id_path=$(echo "$udev_info" | grep '^ID_PATH=' | cut -d= -f2)
 
-							# Support UFS devices by detecting ID_BUS=scsi (new storage device type)
-							if [ "$id_bus" = "scsi" ]; then
-								real_dev="$resolved"
-								break
-							elif echo "$model" | grep -Eqi 'SD|Combo|Reader|MMC|eMMC'; then
-								real_dev="$resolved"
-								break
-
-							fi
-						done
+						   if [ "$image_type" = "ufs" ]; then
+							   if echo "$id_path" | grep -qi "ufs"; then
+								   real_dev="$resolved"
+								   break
+							   fi
+						   else
+							   if echo "$id_path" | grep -qi "usb"; then
+								   real_dev="$resolved"
+								   break
+							   elif echo "$id_path" | grep -qi "mmc"; then
+								   real_dev="$resolved"
+								   break
+							   fi
+						   fi
+					   done
 						if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
 							real_dev="/dev/mmcblk0"
 		                           		 echo "Fallback to default eMMC: $real_dev"
