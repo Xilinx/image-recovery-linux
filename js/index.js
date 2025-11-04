@@ -274,7 +274,8 @@ function onUpload() {
 	if (imgId === "WIC" && !(
 		filename.endsWith(".wic") ||
 		filename.endsWith(".wic.xz") ||
-		filename.endsWith(".wic.bmap")
+		filename.endsWith(".wic.bmap") ||
+		filename.endsWith(".wic.ufs.xz")
 	)) {
 		alert("Invalid file type for image " + imgId + ". File should be .wic, .wic.xz, or .wic.bmap.");
 		return;
@@ -381,7 +382,7 @@ function onUpload_usb() {
 	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
 	}
-	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP")) {
+	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP") && (extension.toUpperCase() != "WIC.UFS.XZ")) {
 		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
 	}
 	else {
