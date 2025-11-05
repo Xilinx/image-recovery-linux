@@ -98,7 +98,7 @@ if [ "${REQUEST_METHOD:-}" = POST ]; then
 						fi
 					fi
 				done
-
+				if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
 				real_dev="/dev/mmcblk0"
 				echo "Fallback to default eMMC: $real_dev"
 			fi
