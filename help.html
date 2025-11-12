@@ -1,0 +1,110 @@
+<!--
+* Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+* SPDX-License-Identifier: MIT
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>AMD SBIRT - Help</title>
+	<link rel="stylesheet" type="text/css" href="css/index.css">
+	<link rel="icon" href="image/amd_symbol.ico">
+	<style>
+		.help-content {
+			margin: 20px 10px 0 10px;
+		}
+		.help-content h2 {
+			margin: 20px 10px 0 10px;
+		}
+		.help-content hr {
+			border: 1px solid red;
+		}
+		.help-content p {
+			font-size: 20px;
+		}
+		.help-content .section-title {
+			font-weight: bold;
+			color: #e00000;
+		}
+	</style>
+</head>
+<body>
+	<div class="header">
+		<embed class="header_img" src="image/amdlogo.svg">
+		<span class="header_title"> System Boot Image Recovery Tool </span>
+	</div>
+
+	<div class="help-content">
+		<h2>Help</h2>
+		<hr>
+		<p>
+			The Boot Image Recovery Tool helps to revive the board that is
+			dead due to corrupt images. Please see more information about
+			the tool by clicking 'About' button above.
+		</p>
+
+		<p class="section-title">
+			System Board Information
+		</p>
+
+		<p>
+			This section displays the information specific to system board.
+			It shows product name, serial #, part #, UUID, primary
+			and secondary boot device name, and PS-PL DDR memory size.
+		</p>
+
+		<p class="section-title">
+			CC Information
+		</p>
+
+		<p>
+			This section displays the information specific to Carrier Card.
+			It shows carrier card name, serial #, part #, and UUID.
+		</p>
+
+		<p class="section-title">
+			Boot Images Status
+		</p>
+
+		<p>
+			The user don't need to touch this section and it is managed
+			internally by this tool, however advance user can use this to
+			mark image A and B as bootable or non bootable. Also advance
+			user can tell the system to boot which image (A/B) on next power
+			cycle. This section also shows name of the last image
+			successfully booted.
+		</p>
+
+		<p class="section-title">
+			Recover Image
+		</p>
+
+		<p>
+			This section allows user to upload the new image from the user
+			computer to system board. User should first select new bootable image
+			by clicking on Browse button and selecting the file to be
+			uploaded. User can overwrite either image A or image B.
+			This tool allows user to upload image one at a time. By default
+			system selects the image other than last successfully
+			booted image to update automatically. So even if upload fails,
+			system will have last successfully booted image as a backup.
+			If user want to upload new image to overwrite both images A and
+			B, he/she should upload it twice by appropriately selecting the
+			image to be updated using radio button provided.
+
+			On clicking Upload button, system asks for confirmation for
+			upload and if user confirm upload, it shows the prpogress of the
+			impage upload in progress bar. Test under upload shows steps
+			getting executed to upload the new image. Once image is
+			successfully uploaded, power cycle the system to get new image
+			booted.
+		</p>
+	</div>
+
+	<div class="footer">
+		<b>&copy 2025 AMD</b>
+		<b style="margin-right:10px; float:right;" id="version"></b>
+	</div>
+</body>
+</html>

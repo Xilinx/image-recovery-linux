@@ -1,141 +1,131 @@
-<!
+<!--
 * Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
 * SPDX-License-Identifier: MIT
->
+-->
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<title>AMD SBIRT</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="stylesheet" type="text/css" href="css/index.css">
-		<link rel="icon" href="amd_symbol.ico" />
-	</head>
-
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>AMD SBIRT</title>
+	<link rel="stylesheet" type="text/css" href="css/index.css">
+	<link rel="icon" href="image/amd_symbol.ico">
+</head>
+<body onload="onPageLoad()">
 	<div class="header">
 		<embed class="header_img" src="image/amdlogo.svg">
 		<span class="header_title"> System Boot Image Recovery Tool </span>
 	</div>
 
 	<div class="tab">
-	  <button class="tablinks" onclick="OpenTab(event, 'System Information')">System Information</button>
-	  <button class="tablinks" onclick="OpenTab(event, 'Ethernet Recovery')">Ethernet Recovery</button>
-	  <button class="tablinks" onclick="OpenTab(event, 'USB Recovery')">USB Recovery</button>
+		<button class="tablinks" onclick="OpenTab(event, 'System Information')">System Information</button>
+		<button class="tablinks" onclick="OpenTab(event, 'Ethernet Recovery')">Ethernet Recovery</button>
+		<button class="tablinks" onclick="OpenTab(event, 'USB Recovery')">USB Recovery</button>
 	</div>
 
 	<div id="System Information" class="tabcontent">
-		<body onload="onPageLoad()">
-			<div class="navbar">
-				<a href="about.htm" target="_blank">About</a>
+		<div class="navbar">
+			<a href="about.html" target="_blank">About</a>
+		</div>
+
+		<div class="row_body">
+			<div class="column_body">
+				<h2>System Board Information </h2>
+				<hr>
+				<table class="sysinfotbl" id="sysboardtbl">
+					<tr>
+						<td>Name :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Revision # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Serial # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Part # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>UUID :</td>
+						<td> </td>
+					</tr>
+				</table>
 			</div>
 
-			<div class="row_body">
-				<div class="column_body">
-					<h2>System Board Information </h2>
-					<hr>
-					<table class="sysinfotbl" id="sysboardtbl">
-						<tr>
-							<td>Name :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Revision # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Serial # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Part # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>UUID :</td>
-							<td> </td>
-						</tr>
-					</table>
-				</div>
-
-				<div class="column_body">
-					<h2>Carrier Card Information (Optional)</h2>
-					<hr>
-					<table class="sysinfotbl" id="cctbl">
-						<tr>
-							<td>Name :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Revision # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Serial # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>Part # :</td>
-							<td> </td>
-						</tr>
-						<tr>
-							<td>UUID :</td>
-							<td> </td>
-						</tr>
-					</table>
-				</div>
+			<div class="column_body">
+				<h2>Carrier Card Information (Optional)</h2>
+				<hr>
+				<table class="sysinfotbl" id="cctbl">
+					<tr>
+						<td>Name :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Revision # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Serial # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>Part # :</td>
+						<td> </td>
+					</tr>
+					<tr>
+						<td>UUID :</td>
+						<td> </td>
+					</tr>
+				</table>
 			</div>
+		</div>
 
-			<div class="row_body">
-				<div class="column_body">
-					<h2>Boot Image Status</h2>
-					<hr>
-					<div class="row_body">
-						<div class="sysimginfo">
-							<table id="sysimginfotbl">
-								<tr class="sysimginfotbl">
-									<td rowspan="4">Current Status</td>
-									<td style="width:40%; text-align: right;">Bank A : </td>
-									<td> </td>
-								</tr>
-								<tr>
-									<td style="text-align: right;">Bank B : </td>
-									<td> </td>
-								</tr>
-								<tr>
-									<td style="text-align: right;">Active Bank : </td>
-									<td> </td>
-								</tr>
-								<tr>
-									<td style="text-align: right;">Previous Active Bank : </td>
-									<td> </td>
-								</tr>
-							</table>
-						</div>
+		<div class="row_body">
+			<div class="column_body">
+				<h2>Boot Image Status</h2>
+				<hr>
+				<div class="row_body">
+					<div class="sysimginfo">
+						<table id="sysimginfotbl">
+							<tr class="sysimginfotbl">
+								<td rowspan="4">Current Status</td>
+								<td style="width:40%; text-align: right;">Bank A : </td>
+								<td> </td>
+							</tr>
+							<tr>
+								<td style="text-align: right;">Bank B : </td>
+								<td> </td>
+							</tr>
+							<tr>
+								<td style="text-align: right;">Active Bank : </td>
+								<td> </td>
+							</tr>
+							<tr>
+								<td style="text-align: right;">Previous Active Bank : </td>
+								<td> </td>
+							</tr>
+						</table>
 					</div>
 				</div>
 			</div>
-			
-			<div class="footer">
-				<b>&copy 2024 AMD</b>
-				<b style="margin-right:10px; float:right;">Version: 1.0</b>
-			</div>
-
-			<script src="js/index.js">
-			</script>
-		</body>
+		</div>
 	</div>
 
 	<div id="Ethernet Recovery" class="tabcontent">
 		<div class="navbar">
-			<a href="help.htm" target="_blank">Help</a>
+			<a href="help.html" target="_blank">Help</a>
 		</div>
 		<div class="column_body">
 			<h2>Ethernet Recovery Image</h2>
 			<hr>
 			<form id="eth_form" action="/cgi-bin/eth_write.sh" method="POST" enctype="multipart/form-data" style="padding:1px 0 0 10px">
 				<button type="button" id="brws_btn" class="btn btn_brws" onclick="onBrws()">Browse</button>
-				<input type:"text" class="file_info file_name" id="fileName" readonly>
-				<input type:"text" class="file_info" id="fileSize" readonly>
+				<input type="text" class="file_info file_name" id="fileName" readonly>
+				<input type="text" class="file_info" id="fileSize" readonly>
 				<input type="file" accept=".bin,.wic,.xz,.bmap" id="img_file" name="img_file">
 				<p><b>Select Image to be recovered</b></p>
 				<input type="radio" id="recAimg" name="recimg" value=0>
@@ -149,31 +139,22 @@
 			</form>
 		</div>
 	</div>
-		
-		<div class="footer">
-			<b>&copy 2024 AMD</b>
-			<b style="margin-right:10px; float:right;">Version: 1.0</b>
-		</div>
-
-		<script src="js/index.js">
-		</script>
-	</div>
 
 	<div id="USB Recovery" class="tabcontent">
 		<div class="navbar">
-			<a href="help.htm" target="_blank">Help</a>
+			<a href="help.html" target="_blank">Help</a>
 		</div>
 
 		<div class="column_body">
 			<h2>USB Recovery Image</h2>
 			<hr>
 			<div style="padding:1px 0 0 10px">
-				<button type="button" id="brws_btn" class="btn btn_brws" onclick="onBrws_usb()">Scan USB Device</button>
+				<button type="button" id="brws_btn_usb" class="btn btn_brws" onclick="onBrws_usb()">Scan USB Device</button>
 				<table class="usb_filestbl" id="usb_files">
 					<tr>
 						<td>
 							<div class="radio">
-							<label><input type="radio" id='regular' name="optradio"></label>
+							<label><input type="radio" id="usb_file1" name="optradio"></label>
 							</div>
 						</td>
 						<td> </td>
@@ -181,7 +162,7 @@
 					<tr>
 						<td>
 							<div class="radio">
-							<label><input type="radio" id='regular' name="optradio"></label>
+							<label><input type="radio" id="usb_file2" name="optradio"></label>
 							</div>
 						</td>
 						<td> </td>
@@ -189,7 +170,7 @@
 					<tr>
 						<td>
 							<div class="radio">
-							<label><input type="radio" id='regular' name="optradio"></label>
+							<label><input type="radio" id="usb_file3" name="optradio"></label>
 							</div>
 						</td>
 						<td> </td>
@@ -197,7 +178,7 @@
 					<tr>
 						<td>
 							<div class="radio">
-							<label><input type="radio" id='regular' name="optradio"></label>
+							<label><input type="radio" id="usb_file4" name="optradio"></label>
 							</div>
 						</td>
 						<td> </td>
@@ -205,31 +186,31 @@
 					<tr>
 						<td>
 							<div class="radio">
-							<label><input type="radio" id='regular' name="optradio"></label>
+							<label><input type="radio" id="usb_file5" name="optradio"></label>
 							</div>
 						</td>
 						<td> </td>
 					</tr>
 				</table>
-				<input type="file" accept=".bin,.wic,.xz,.bmap" id="img_file" name="img_file">
+				<input type="file" accept=".bin,.wic,.xz,.bmap" id="img_file_usb" name="img_file_usb">
 				<p><b>Select Image to be recovered</b></p>
 				<input type="radio" id="recAimg_usb" name="recimg_usb" value=0>
 				<label id="recALabel_usb" for="recAimg_usb">Boot Image (BOOT.bin A/B image)</label><br>
 				<input type="radio" id="recWICimg_usb" name="recimg_usb" value=3>
 				<label id="recWICLabel_usb" for="recWICimg_usb">Wic Image (eMMC/SD)</label><br> <br>
-				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload_usb()" enabled>Upload</button>
+				<button type="button" id="upld_btn_usb" class="btn btn_act" onclick="onUpload_usb()">Upload</button>
 				<progress id="upld_prgrs_usb" value="0" max="100" style="width:400px;"> 0% </progress>
-				<br><input type:"text" class="upld_status_usb" id="upld_status_usb" readonly><br>
+				<br><input type="text" class="upld_status_usb" id="upld_status_usb" readonly><br>
 				<textarea id="usb_flash_status" class="upld_status_usb" readonly rows="3" style="width:100%; visibility:hidden;"></textarea>
 			</div>
 		</div>
-
-		<div class="footer">
-			<b>&copy 2024 AMD</b>
-			<b style="margin-right:10px; float:right;">Version: 1.0</b>
-		</div>
-
-		<script src="js/index.js">
-		</script>
 	</div>
+
+	<div class="footer">
+		<b>&copy 2025 AMD</b>
+		<b style="margin-right:10px; float:right;">Version: 1.0</b>
+	</div>
+
+	<script src="js/index.js"></script>
+</body>
 </html>

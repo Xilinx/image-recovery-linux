@@ -16,39 +16,43 @@ body {
 	background-color: #000000;
 	padding: 15px 10px;
 	font-size: 30px;
- }
- /* Style the tab */
+}
+
+/* Style the tab */
 .tab {
-  overflow: hidden;
-  border: 1px solid #ccc;
-  background-color: #f1f1f1;
+	overflow: hidden;
+	border: 1px solid #ccc;
+	background-color: #f1f1f1;
 }
 
 /* Style the buttons inside the tab */
 .tab button {
-  background-color: inherit;
-  float: left;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 12px 14px;
-  transition: 0.3s;
-  font-size: 16px;
+	background-color: inherit;
+	float: left;
+	border: none;
+	outline: none;
+	cursor: pointer;
+	padding: 12px 14px;
+	transition: 0.3s;
+	font-size: 16px;
 }
+
 /* Change background color of buttons on hover */
 .tab button:hover {
-  background-color: #ddd;
+	background-color: #ddd;
 }
+
 /* Create an active/current tablink class */
 .tab button.active {
-  background-color: #ccc;
+	background-color: #ccc;
 }
+
 /* Style the tab content */
 .tabcontent {
-  display: none;
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-top: none;
+	display: none;
+	padding: 6px 12px;
+	border: 1px solid #ccc;
+	border-top: none;
 }
 .footer {
 	position: fixed;
@@ -102,7 +106,7 @@ body {
 table {
 	margin: 10px;
 	table-layout: fixed;
-	width:90%;
+	width: 90%;
 }
 
 .sysinfotbl td:nth-child(1) {
@@ -136,7 +140,6 @@ table {
 	width: 60%;
 }
 
-
 .btn {
 	background-color: #0b7380;
 	border: none;
@@ -163,7 +166,7 @@ table {
 }
 
 .btn:hover {
-	box-shadow: 0 12px 16px 0 rgba(0,0,0,0.24),0 17px 50px 0 rgba(0,0,0,0.19);
+	box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
 }
 
 .btn:disabled {
@@ -250,7 +253,6 @@ table {
 	float: left;
 	width: 33.33%;
 	padding: 0px 2px 0px 2px;
-
 }
 
 .sysimginfo {
@@ -262,10 +264,10 @@ table {
 
 .sysimginfotbl td:nth-child(1) {
 	width: 20%;
-	font-size:20px;
+	font-size: 20px;
 }
 
-@media screen and (max-width:1200px) {
+@media screen and (max-width: 1200px) {
 	.column_body {
 		width: 100%;
 	}

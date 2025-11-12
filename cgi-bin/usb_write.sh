@@ -4,121 +4,226 @@
 
 echo "Content-type: text/html"
 echo ""
-
 echo "<html><body><pre>"
 
-export CGIBASHOPTS_DIR=${PWD}
-CGIBASHOPTS_TMP="$CGIBASHOPTS_DIR.tmp"
+CGIBASHOPTS_DIR="${PWD}"
+CGIBASHOPTS_TMP="${CGIBASHOPTS_DIR}.tmp"
+SCRIPT_DIR="$(dirname "$0")"
+METADATA_FILE="sys_mdata.bin"
 
-cat /dev/mtd5 > sys_mdata.bin
-active_bank=$(hexdump -s 0x8 -n4 -e '"%x"' sys_mdata.bin)
+# Cleanup function
+cleanup() {
+	rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE"
+}
 
-if [ "${REQUEST_METHOD:-}" = POST ]; then
+trap cleanup EXIT
+
+# Read current active bank from metadata
+if ! cat /dev/mtd5 > "$METADATA_FILE" 2>/dev/null; then
+	echo "FLASH_STATUS=FAIL"
+	echo "FLASH_REASON=Failed to read MTD device"
+	echo "</pre></body></html>"
+	exit 1
+fi
+
+active_bank=$(hexdump -s 0x8 -n4 -e '"%x"' "$METADATA_FILE")
+
+if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 	echo "Upload directory: $CGIBASHOPTS_DIR"
+
 	if [[ ${CONTENT_TYPE:-} =~ ^multipart/form-data[\;,][[:space:]]*boundary=([^\;,]+) ]]; then
 		IFS=':'
+
 		while read -r line; do
 			if [[ $line =~ ^Content-Disposition:\ *form-data[\;,]\ *name=\"([^\"]+)\"(\;\ *filename=\"([^\"]+)\")? ]]; then
 				read -ra val <<< "${BASH_REMATCH[1]}"
+
 				if [ "${val[0]}" = "Image_FLASH" ]; then
-					if [ $active_bank = 0 ]; then
-						echo "IMAGE B"  > ImageB.txt
-						flash_eraseall /dev/mtd12
-						flashcp ${val[1]} /dev/mtd12
-						if ! flashcp "${val[1]}" /dev/mtd12; then
+					# Flash boot image to inactive bank
+					img_file="${val[1]}"
+
+					if [ ! -f "$img_file" ]; then
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=Image file not found: $img_file"
+						echo "</pre></body></html>"
+						exit 1
+					fi
+
+					if [ "$active_bank" = "0" ]; then
+						echo "Flashing IMAGE B"
+
+						if ! flash_eraseall /dev/mtd12 2>/dev/null; then
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Failed to erase /dev/mtd12"
+							echo "</pre></body></html>"
+							exit 1
+						fi
+
+						if ! flashcp "$img_file" /dev/mtd12 2>/dev/null; then
 							echo "FLASH_STATUS=FAIL"
 							echo "FLASH_REASON=Failed to write image to /dev/mtd12"
+							echo "</pre></body></html>"
 							exit 1
 						fi
-						printf "\1" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
-						printf "\0" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
-						printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=25 count=1 conv=notrunc)
-						./cal_crc32.sh
+
+						# Update metadata: set active bank to B, previous to A
+						printf "\x01" | dd of="$METADATA_FILE" bs=1 seek=8 count=1 conv=notrunc 2>/dev/null
+						printf "\x00" | dd of="$METADATA_FILE" bs=1 seek=12 count=1 conv=notrunc 2>/dev/null
+						printf "\xfc" | dd of="$METADATA_FILE" bs=1 seek=25 count=1 conv=notrunc 2>/dev/null
 					else
-						echo "IMAGE A"  > ImageA.txt
-						flash_eraseall /dev/mtd9
-						flashcp ${val[1]} /dev/mtd9
-						if ! flashcp "${val[1]}" /dev/mtd9; then
+						echo "Flashing IMAGE A"
+
+						if ! flash_eraseall /dev/mtd9 2>/dev/null; then
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Failed to erase /dev/mtd9"
+							echo "</pre></body></html>"
+							exit 1
+						fi
+
+						if ! flashcp "$img_file" /dev/mtd9 2>/dev/null; then
 							echo "FLASH_STATUS=FAIL"
 							echo "FLASH_REASON=Failed to write image to /dev/mtd9"
+							echo "</pre></body></html>"
 							exit 1
 						fi
-						printf "\0" | (dd of=sys_mdata.bin bs=1 seek=8 count=1 conv=notrunc)
-						printf "\1" | (dd of=sys_mdata.bin bs=1 seek=12 count=1 conv=notrunc)
-						printf  "\xfc" | (dd of=sys_mdata.bin bs=1 seek=24 count=1 conv=notrunc)
-						./cal_crc32.sh
-					fi
-					   echo "FLASH_STATUS=SUCCESS"
-					   echo "FLASH_REASON=Boot image flashed successfully"
-				   else
-					   echo ${val[1]} > ImageWIC.txt
-					   real_dev=""
-					   basefile=$(basename "${val[1]}")
-					   if echo "$basefile" | grep -qE '\.wic\.ufs\.(xz|bmap)$'; then
-						   image_type="ufs"
-					   else
-						   image_type="usb"
-					   fi
-					   for dev in /dev/disk/by-path/* /dev/mmcblk* /dev/sd*; do
-						   [ -e "$dev" ] || continue
-						   resolved=$(readlink -f "$dev")
-						   [ -b "$resolved" ] || continue
-						   udev_info=$(udevadm info --query=property --name="$resolved" 2>/dev/null)
-						   id_path=$(echo "$udev_info" | grep '^ID_PATH=' | cut -d= -f2)
 
-						   if [ "$image_type" = "ufs" ]; then
-							   if echo "$id_path" | grep -qi "ufs"; then
-								   real_dev="$resolved"
-								   break
-							   fi
-						   else
-							   if echo "$id_path" | grep -qi "usb"; then
-								   real_dev="$resolved"
-								   break
-							   elif echo "$id_path" | grep -qi "mmc"; then
-								   real_dev="$resolved"
-								   break
-							   fi
-						   fi
-					   done
-						if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
-							real_dev="/dev/mmcblk0"
-		                           		 echo "Fallback to default eMMC: $real_dev"
-						fi
-						if [ ! -b "$real_dev" ]; then
-						        echo "FLASH_STATUS=FAIL"
-				                        echo "FLASH_REASON=No valid storage device found for flashing"
-                           				echo "</pre></body></html>"
+						# Update metadata: set active bank to A, previous to B
+						printf "\x00" | dd of="$METADATA_FILE" bs=1 seek=8 count=1 conv=notrunc 2>/dev/null
+						printf "\x01" | dd of="$METADATA_FILE" bs=1 seek=12 count=1 conv=notrunc 2>/dev/null
+						printf "\xfc" | dd of="$METADATA_FILE" bs=1 seek=24 count=1 conv=notrunc 2>/dev/null
+					fi
+
+					# Calculate CRC32 and update flash
+					if [ -x "$SCRIPT_DIR/cal_crc32.sh" ]; then
+						if ! "$SCRIPT_DIR/cal_crc32.sh"; then
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Failed to calculate CRC32"
+							echo "</pre></body></html>"
 							exit 1
 						fi
-	                        	echo "Target device: $real_dev"
-					extension="${val[1]##*.}"
-					filename="${val[1]%.*}"
+					else
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=cal_crc32.sh not found"
+						echo "</pre></body></html>"
+						exit 1
+					fi
+
+					echo "FLASH_STATUS=SUCCESS"
+					echo "FLASH_REASON=Boot image flashed successfully"
+
+				else
+					# Flash WIC image to storage device
+					echo "Flashing WIC IMAGE"
+					img_file="${val[1]}"
+
+					if [ ! -f "$img_file" ]; then
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=Image file not found: $img_file"
+						echo "</pre></body></html>"
+						exit 1
+					fi
+
+					real_dev=""
+					basefile=$(basename "$img_file")
+
+					# Determine image type based on filename
+					if echo "$basefile" | grep -qE '\.wic\.ufs\.(xz|bmap)$'; then
+						image_type="ufs"
+					else
+						image_type="usb"
+					fi
+
+					# Find appropriate storage device
+					for dev in /dev/disk/by-path/* /dev/mmcblk* /dev/sd*; do
+						[ -e "$dev" ] || continue
+						resolved=$(readlink -f "$dev")
+						[ -b "$resolved" ] || continue
+
+						udev_info=$(udevadm info --query=property --name="$resolved" 2>/dev/null)
+						id_path=$(echo "$udev_info" | grep '^ID_PATH=' | cut -d= -f2)
+
+						if [ "$image_type" = "ufs" ]; then
+							if echo "$id_path" | grep -qi "ufs"; then
+								real_dev="$resolved"
+								break
+							fi
+						else
+							if echo "$id_path" | grep -qi "usb"; then
+								real_dev="$resolved"
+								break
+							elif echo "$id_path" | grep -qi "mmc"; then
+								real_dev="$resolved"
+								break
+							fi
+						fi
+					done
+
+					# Fallback to default eMMC if no device found
+					if [ -z "$real_dev" ] && [ -b /dev/mmcblk0 ]; then
+						real_dev="/dev/mmcblk0"
+						echo "Fallback to default eMMC: $real_dev"
+					fi
+
+					if [ ! -b "$real_dev" ]; then
+						echo "FLASH_STATUS=FAIL"
+						echo "FLASH_REASON=No valid storage device found for flashing"
+						echo "</pre></body></html>"
+						exit 1
+					fi
+
+					echo "Target device: $real_dev"
+					extension="${img_file##*.}"
+					filename="${img_file%.*}"
+
+					# Flash based on file extension
 					if [ "$extension" = "bmap" ]; then
 						if [ -f "$filename.xz" ]; then
-							xzcat $filename.xz | bmap-writer - $filename.bmap $real_dev
+							if ! xzcat "$filename.xz" | bmap-writer - "$img_file" "$real_dev" 2>/dev/null; then
+								echo "FLASH_STATUS=FAIL"
+								echo "FLASH_REASON=Failed to flash compressed image with bmap"
+								echo "</pre></body></html>"
+								exit 1
+							fi
 						elif [ -f "$filename" ]; then
-							bmap-writer $filename $filename.bmap $real_dev
+							if ! bmap-writer "$filename" "$img_file" "$real_dev" 2>/dev/null; then
+								echo "FLASH_STATUS=FAIL"
+								echo "FLASH_REASON=Failed to flash image with bmap"
+								echo "</pre></body></html>"
+								exit 1
+							fi
 						else
-							echo "Content-type: text/html"
-							echo ""
-							echo 'Fail'
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Source file not found for bmap flashing"
+							echo "</pre></body></html>"
 							exit 1
 						fi
 					elif [ "$extension" = "xz" ]; then
-						xzcat $filename.xz | dd of=$real_dev bs=32M
-					elif [ "$extension" = "wic" ]; then
-						dd if=$filename.wic of=$real_dev
+						if ! xzcat "$img_file" | dd of="$real_dev" bs=32M 2>/dev/null; then
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Failed to flash compressed image"
+							echo "</pre></body></html>"
+							exit 1
 						fi
-					fi 
+					elif [ "$extension" = "wic" ]; then
+						if ! dd if="$img_file" of="$real_dev" bs=32M 2>/dev/null; then
+							echo "FLASH_STATUS=FAIL"
+							echo "FLASH_REASON=Failed to flash WIC image"
+							echo "</pre></body></html>"
+							exit 1
+						fi
+					fi
+
 					echo "FLASH_STATUS=SUCCESS"
 					echo "FLASH_REASON=WIC image flashed successfully to $real_dev"
 				fi
-			done
-		fi
+			fi
+		done
+	fi
 else
-    echo "FLASH_STATUS=IDLE"
-    echo "FLASH_REASON=No POST request received"
+	echo "FLASH_STATUS=IDLE"
+	echo "FLASH_REASON=No POST request received"
 fi
+
 echo "</pre></body></html>"
+exit 0
 

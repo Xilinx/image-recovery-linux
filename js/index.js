@@ -2,7 +2,7 @@
 * Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
 * SPDX-License-Identifier: MIT
 */
-var objPage, dotInterval;
+var objPage, dotInterval, ImgCrc;
 
 function handleFlashResponse(responseText, target) {
     const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
@@ -12,25 +12,29 @@ function handleFlashResponse(responseText, target) {
     const reason = reasonMatch ? reasonMatch[1].trim() : "No details provided";
 
     const statusField = document.getElementById(target);
-    statusField.value = `Status: ${status} — ${reason}`;
-    statusField.style.visibility = "visible";
+    if (statusField) {
+        statusField.value = `Status: ${status} — ${reason}`;
+        statusField.style.visibility = "visible";
 
-    // Optional: color feedback
-    if (status === "SUCCESS") {
-        statusField.style.borderColor = "#2ecc71";
-        statusField.style.backgroundColor = "#e6f9e6";
-    } else if (status === "FAIL") {
-        statusField.style.borderColor = "#e74c3c";
-        statusField.style.backgroundColor = "#ffe6e6";
-    } else {
-        statusField.style.borderColor = "#f1c40f";
-        statusField.style.backgroundColor = "#fffbe6";
+        // Optional: color feedback
+        if (status === "SUCCESS") {
+            statusField.style.borderColor = "#2ecc71";
+            statusField.style.backgroundColor = "#e6f9e6";
+        } else if (status === "FAIL") {
+            statusField.style.borderColor = "#e74c3c";
+            statusField.style.backgroundColor = "#ffe6e6";
+        } else {
+            statusField.style.borderColor = "#f1c40f";
+            statusField.style.backgroundColor = "#fffbe6";
+        }
     }
 }
 
 function onPageLoad() {
 	document.getElementById("upld_prgrs").style.visibility = "hidden";
 	document.getElementById("upld_status").style.visibility = "hidden";
+	document.getElementById("upld_prgrs_usb").style.visibility = "hidden";
+	document.getElementById("upld_status_usb").style.visibility = "hidden";
 
 	var http = new XMLHttpRequest();
 	http.open("GET", "cgi-bin/sysinfo_eeprom.sh", true);
@@ -84,7 +88,7 @@ function onPageLoad() {
 
 function onUsbTab() {
 	var ele = document.getElementsByName('optradio');
-	for (i = 0; i < ele.length; i++) {
+	for (var i = 0; i < ele.length; i++) {
 		ele[i].checked = false;
 		ele[i].value = "";
 	}
@@ -104,26 +108,26 @@ function updateBootImgStatus(objBrd) {
 		var obj = JSON.parse(this.responseText);
 		var SysImgInfoTbl = document.getElementById("sysimginfotbl");
 
-		if (obj.BankAStatus == true)
+		if (obj.BankAStatus === true)
 			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Accepted";
 		else
 			SysImgInfoTbl.rows[0].cells[2].innerHTML = "Rejected";
 
-		if (obj.BankBStatus == true)
+		if (obj.BankBStatus === true)
 			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Accepted";
 		else
 			SysImgInfoTbl.rows[1].cells[1].innerHTML = "Rejected";
 
-		if (obj.ActiveBank == "ImageA")
+		if (obj.ActiveBank === "ImageA")
 			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank A";
 		else
 			SysImgInfoTbl.rows[2].cells[1].innerHTML = "Bank B";
 
-		if (obj.PrevActiveBank == "ImageA")
+		if (obj.PrevActiveBank === "ImageA")
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank A";
 		else
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Bank B";
-	}
+	};
 }
 
 function onUploadStart(evt) {
@@ -158,7 +162,7 @@ function onUploadFailed(evt) {
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	document.getElementById('upld_status').value = "Upload Failed . . . . .";
 	alert("Failed to update image " + imgId);
@@ -171,7 +175,7 @@ function onUploadCanceled(evt) {
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	document.getElementById('upld_status').value = "Upload Canceled . . . . .";
 	alert("Canceled update image " + imgId + " operation");
@@ -213,7 +217,7 @@ function initiateImgUpload () {
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	var url = 'Image_' + imgId;
 	var xhr = new XMLHttpRequest();
@@ -307,7 +311,7 @@ function onUpload() {
 }
 
 function onBrws() {
-	var imgFile = document.getElementById('img_file')
+	var imgFile = document.getElementById('img_file');
 	imgFile.onchange = e => {
 		var file = e.target.files[0];
 		if (file) {
@@ -339,15 +343,15 @@ function onBrws_usb() {
 	xhr.send();
 	xhr.onload = function() {
 		var imgFile = this.responseText;
-		file = imgFile.split('\n')
+		var file = imgFile.split('\n');
 
 		var table = document.getElementById("usb_files");
 		var ele = document.getElementsByName('optradio');
-		for (i = 0; i < ele.length; i++) {
+		for (var i = 0; i < ele.length; i++) {
 			table.rows[i].cells[1].innerHTML = file[i];
 			ele[i].value = file[i];
 		}
-	}
+	};
 }
 
 function onUpload_usb() {
@@ -355,8 +359,8 @@ function onUpload_usb() {
 	var imgFile = null;
 	var ele = document.getElementsByName('optradio');
 
-	for (i = 0; i < ele.length; i++) {
-		if (ele[i].checked){
+	for (var i = 0; i < ele.length; i++) {
+		if (ele[i].checked) {
 			imgFile = ele[i].value;
 			break;
 		}
@@ -367,10 +371,10 @@ function onUpload_usb() {
 	else if (document.getElementById("recWICimg_usb").checked)
 		imgId = "WIC";
 
-	if(imgId == null){
+	if (imgId === null) {
 		alert("Please select image to be recovered");
 		return;
-	}else if(imgFile == null) {
+	} else if (imgFile === null) {
 		alert("Please select image file to be updated");
 		return;
 	}
@@ -378,19 +382,17 @@ function onUpload_usb() {
 	var progressBar = document.getElementById("upld_prgrs_usb");
 	progressBar.value = 0;
 
-	extension = imgFile.split('.').pop() + '';
-	if ((imgId == "FLASH") && (extension.toUpperCase() != "BIN")) {
+	var extension = imgFile.split('.').pop() + '';
+	if ((imgId === "FLASH") && (extension.toUpperCase() !== "BIN")) {
 		alert("Invalid file type for image " + imgId + ", File should be of .bin type.");
-	}
-	else if ((imgId == "WIC") && (extension.toUpperCase() != "WIC") && (extension.toUpperCase() != "XZ") && (extension.toUpperCase() != "BMAP") && (extension.toUpperCase() != "WIC.UFS.XZ")) {
+	} else if ((imgId === "WIC") && (extension.toUpperCase() !== "WIC") && (extension.toUpperCase() !== "XZ") && (extension.toUpperCase() !== "BMAP") && (extension.toUpperCase() !== "WIC.UFS.XZ")) {
 		alert("Invalid file type for image " + imgId + ", File should be of .wic type.");
-	}
-	else {
-		if (confirm("Are you sure you want to update "+ imgId +" image?")) {
+	} else {
+		if (confirm("Are you sure you want to update " + imgId + " image?")) {
 			disableAllUsrInputs_usb();
 			document.getElementById("upld_prgrs_usb").style.visibility = "visible";
 			document.getElementById("upld_status_usb").style.visibility = "visible";
-			initiateImgUpload_usb(imgId, imgFile)
+			initiateImgUpload_usb(imgId, imgFile);
 		}
 	}
 }
@@ -425,7 +427,7 @@ function initiateImgUpload_usb(pImgId, pImgFile) {
 			alert("Failed to update " + pImgId + " image");
 		}
 
-	}
+	};
 }
 
 function flashEraseStatus(imgId) {
@@ -442,7 +444,7 @@ function flashEraseStatus(imgId) {
 			const event = new CustomEvent('FlashEraseDone', { detail: imgId});
 			document.getElementById("upld_btn").dispatchEvent(event);
 		}
-	}
+	};
 }
 
 function flashErase() {
@@ -452,7 +454,7 @@ function flashErase() {
 	if (document.getElementById("recAimg").checked)
 		imgId = "FLASH";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", "cgi-bin/erase.sh", true);
@@ -476,9 +478,9 @@ function startCalcCrc32(file) {
 	var chunkSize = 64 * 1024;
 
 	function onLoadHandler(evt) {
-		if (evt.target.error == null) {
+		if (evt.target.error === null) {
 			offset += evt.target.result.byteLength;
-			feedData2Crc32Engine(evt.target.result)
+			feedData2Crc32Engine(evt.target.result);
 		} else {
 			alert("ERROR: File read failed during CRC32 calculation");
 			return;
@@ -490,8 +492,7 @@ function startCalcCrc32(file) {
 			progressBar.max = 0;
 			const event = new CustomEvent('CrcDone', { detail: crc });
 			document.getElementById("upld_btn").dispatchEvent(event);
-		}
-		else {
+		} else {
 			progressBar.max = fileSize;
 			progressBar.value = offset;
 			readFileChunk(offset, chunkSize, file);
@@ -505,13 +506,13 @@ function startCalcCrc32(file) {
 		frd.readAsArrayBuffer(dataBlob);
 	}
 
-	function buildCrc32Table (){
+	function buildCrc32Table() {
 		var n;
 		var crcTable = [];
 
-		for(var i = 0; i < 256; i++){
+		for (var i = 0; i < 256; i++) {
 			n = i;
-			for(var j = 0; j < 8; j++){
+			for (var j = 0; j < 8; j++) {
 				n = ((n & 1) ? (0xEDB88320 ^ (n >>> 1)) : (n >>> 1));
 			}
 			crcTable[i] = n;
@@ -520,19 +521,19 @@ function startCalcCrc32(file) {
 		return crcTable;
 	}
 
-	function feedData2Crc32Engine (data) {
-		var buf = new Int8Array(data)
-		for (var i = 0; i < data.byteLength; i++ ) {
+	function feedData2Crc32Engine(data) {
+		var buf = new Int8Array(data);
+		for (var i = 0; i < data.byteLength; i++) {
 			crc = (crc >>> 8) ^ crcTable[(crc ^ buf[i]) & 0xFF];
 		}
-	};
+	}
 
 	var crcTable = buildCrc32Table();
 	readFileChunk(offset, chunkSize, file);
 }
 
 function initiateCrcValidation() {
-	var obj = { img_name: document.getElementById("img_file").files[0].name, crc: ImgCrc }
+	var obj = { img_name: document.getElementById("img_file").files[0].name, crc: ImgCrc };
 	var http = new XMLHttpRequest();
 	http.open("POST", "cgi-bin/validate_crc32.sh", true);
 	var params = JSON.stringify(obj);
@@ -546,16 +547,14 @@ function initiateCrcValidation() {
 		if (document.getElementById("recAimg").checked)
 			imgId = "FLASH";
 		else if (document.getElementById("recWICimg").checked)
-			imgId = "WIC"
+			imgId = "WIC";
 
-		split_file_name = imgFile.name.split('.');
-		extension = split_file_name.pop() + '';
-		ext_imgFile = split_file_name.slice(0, -1).join('.') + ".wic.xz";
-		if (extension.toUpperCase() == "BMAP") {
-			document.getElementById("img_file").files[0] = ext_imgFile;
-			onBrws();
-			imgFile.click();
-			onUpload();
+		var split_file_name = imgFile.name.split('.');
+		var extension = split_file_name.pop() + '';
+		var ext_imgFile = split_file_name.slice(0, -1).join('.') + ".wic.xz";
+		if (extension.toUpperCase() === "BMAP") {
+			// Note: Cannot directly modify files[0], this code has a logic error
+			alert("BMAP file detected. Please select the corresponding .wic.xz file.");
 		}
 
 		if (extension.toUpperCase() != "BMAP") {
@@ -570,7 +569,7 @@ function initiateCrcValidation() {
 				updateBootImgStatus(objPage);
 				enableAllUsrInputs();
 		}
-	}
+	};
 }
 
 function crc32Validate() {
@@ -580,13 +579,13 @@ function crc32Validate() {
 
 	http.onload = function() {
 		var res = this.responseText;
-		if (res == 'ok\n') {
+		if (res === 'ok\n') {
 			document.getElementById('upld_status').value = "Upload successful . . . . .";
 		} else {
 			document.getElementById('upld_status').value = "Upload failed . . . . .";
 		}
 		enableAllUsrInputs();
-	}
+	};
 }
 
 function OpenTab(evt, tabName) {
@@ -601,12 +600,12 @@ function OpenTab(evt, tabName) {
 		tablinks[i].className = tablinks[i].className.replace(" active", "");
 	}
 
-	if(tabName == "USB Recovery") {
+	if (tabName === "USB Recovery") {
 		onUsbTab();
 	}
 
 	document.getElementById(tabName).style.display = "block";
-	if(evt) evt.currentTarget.className += " active";
+	if (evt) evt.currentTarget.className += " active";
 	else document.querySelector('button.tablinks').className += " active";
 }
 
