@@ -5,29 +5,53 @@
 var objPage, dotInterval, ImgCrc;
 
 function handleFlashResponse(responseText, target) {
-    const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
-    const reasonMatch = responseText.match(/FLASH_REASON=(.+)/);
+	const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
+	const reasonMatch = responseText.match(/FLASH_REASON=(.+)/);
+	const versionMatch = responseText.match(/FLASH_VERSION=(.+)/);
+	const buildDateMatch = responseText.match(/FLASH_BUILD_DATE=(.+)/);
 
-    const status = statusMatch ? statusMatch[1].trim() : "UNKNOWN";
-    const reason = reasonMatch ? reasonMatch[1].trim() : "No details provided";
+	const status = statusMatch ? statusMatch[1].trim() : "UNKNOWN";
+	const reason = reasonMatch ? reasonMatch[1].trim() : "No details provided";
+	const versionInfo = versionMatch ? versionMatch[1].trim() : null;
+	const buildDate = buildDateMatch ? buildDateMatch[1].trim() : null;
 
-    const statusField = document.getElementById(target);
-    if (statusField) {
-        statusField.value = `Status: ${status} — ${reason}`;
-        statusField.style.visibility = "visible";
+	const statusField = document.getElementById(target);
+	if (statusField) {
+		// Clear previous content before updating
+		statusField.value = "";
+		statusField.style.visibility = "visible";
 
-        // Optional: color feedback
-        if (status === "SUCCESS") {
-            statusField.style.borderColor = "#2ecc71";
-            statusField.style.backgroundColor = "#e6f9e6";
-        } else if (status === "FAIL") {
-            statusField.style.borderColor = "#e74c3c";
-            statusField.style.backgroundColor = "#ffe6e6";
-        } else {
-            statusField.style.borderColor = "#f1c40f";
-            statusField.style.backgroundColor = "#fffbe6";
-        }
-    }
+		// Build new message
+		statusField.value =
+			`Status: ${status}\n` +
+			`Reason: ${reason}\n` +
+			(versionInfo ? `Version_info: ${versionInfo}\n` : "") +
+			(buildDate ? `Build Date: ${buildDate}` : "");
+
+		// Update version info section if present
+		const versionEl = document.getElementById("boot_version");
+		const buildDateEl = document.getElementById("boot_build_date");
+		if (versionEl) versionEl.textContent = versionInfo || "--";
+		if (buildDateEl) buildDateEl.textContent = buildDate || "--";
+
+		// Optional: color feedback
+		if (status === "SUCCESS") {
+			statusField.style.borderColor = "#2ecc71";
+			statusField.style.backgroundColor = "#e6f9e6";
+		} else if (status === "FAIL") {
+			statusField.style.borderColor = "#e74c3c";
+			statusField.style.backgroundColor = "#ffe6e6";
+		} else {
+			statusField.style.borderColor = "#f1c40f";
+			statusField.style.backgroundColor = "#fffbe6";
+		}
+
+		// Auto-clear after 5 seconds (optional)
+		setTimeout(() => {
+			statusField.value = "";
+			statusField.style.visibility = "hidden";
+		}, 5000);
+	}
 }
 
 function onPageLoad() {

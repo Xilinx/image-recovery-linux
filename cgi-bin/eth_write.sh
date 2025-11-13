@@ -118,9 +118,28 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 							echo "</pre></body></html>"
 							exit 1
 						fi
+						# Extract version string from BOOT.bin
+						version_info=$(strings "$val" | grep "Version=" | head -n1)
+						build_date=$(echo "$val" | grep -oE '[0-9]{14}' | head -n1)
 
 						echo "FLASH_STATUS=SUCCESS"
 						echo "FLASH_REASON=Boot image flashed successfully"
+
+						if [ -n "$version_info" ]; then
+							echo "FLASH_VERSION=$version_info"
+						fi
+
+						if [ -n "$build_date" ]; then
+							year=${build_date:0:4}
+							month=${build_date:4:2}
+							day=${build_date:6:2}
+							hour=${build_date:8:2}
+							minute=${build_date:10:2}
+							second=${build_date:12:2}
+
+							formatted_date="$year-$month-$day $hour:$minute:$second"
+							echo "FLASH_BUILD_DATE=$formatted_date"
+						fi
 
 					else
 						# Flash WIC image to storage device
