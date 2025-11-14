@@ -5,12 +5,7 @@
 CONFG_FILE="update_confg.bin"
 SCRIPT_DIR="$(dirname "$0")"
 
-# Cleanup function
-cleanup() {
-	rm -f "$CONFG_FILE"
-}
-
-trap cleanup EXIT
+trap 'rm -f "CONFG_FILE"' EXIT
 
 # Read current configuration from MTD device
 if ! cat /dev/mtd3 > "$CONFG_FILE" 2>/dev/null; then

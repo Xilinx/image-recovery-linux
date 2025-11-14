@@ -79,7 +79,7 @@ echo ""
 if [ "$cal_crc32" -eq "$exp_crc32" ]; then
 	echo '{ "Status":"Success" }'
 else
-	echo '{ "Status":"Fail", "Calculated":'$cal_crc32', "Expected":'$exp_crc32' }'
+	echo "{ \"Status\":\"Fail\", \"Calculated\":$cal_crc32, \"Expected\":$exp_crc32 }"
 fi
 
 exit 0

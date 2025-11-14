@@ -11,12 +11,7 @@ CGIBASHOPTS_TMP="${CGIBASHOPTS_DIR}.tmp"
 SCRIPT_DIR="$(dirname "$0")"
 METADATA_FILE="sys_mdata.bin"
 
-# Cleanup function
-cleanup() {
-	rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE"
-}
-
-trap cleanup EXIT
+trap 'rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE"' EXIT
 
 # Read current active bank from metadata
 if ! cat /dev/mtd5 > "$METADATA_FILE" 2>/dev/null; then

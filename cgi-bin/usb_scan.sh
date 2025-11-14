@@ -5,7 +5,6 @@
 # CGI script to scan and mount USB/UFS devices, then list files
 
 USB_MOUNT_DIR="usb_disk"
-USB_PART=1
 USB_DEV_PATTERNS='SanDisk|Cruzer|Kingston|Flash|USB|Toshiba|TransMemory|Transcend|JetFlash|JFV'
 UFS_DEV_PATTERNS='MICRON|MT064GBCAV1U31AA'
 real_dev=""

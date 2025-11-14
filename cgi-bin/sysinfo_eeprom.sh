@@ -4,12 +4,7 @@
 
 SYSINFO_FILE="sysinfo.bin"
 
-# Cleanup function
-cleanup() {
-	rm -f "$SYSINFO_FILE"
-}
-
-trap cleanup EXIT
+trap 'rm -f "$SYSINFO_FILE"' EXIT
 
 # Read EEPROM data
 EEPROM_PATH=""

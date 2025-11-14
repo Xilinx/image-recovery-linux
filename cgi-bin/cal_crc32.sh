@@ -5,12 +5,7 @@
 FILE="sys_mdata.bin"
 EXTRACT_FILE="extract_sys_mdata.bin"
 
-# Cleanup function
-cleanup() {
-	rm -f "$EXTRACT_FILE"
-}
-
-trap cleanup EXIT
+trap 'rm -f "$EXTRACT_FILE"' EXIT
 
 # Check if input file exists
 if [ ! -f "$FILE" ]; then
