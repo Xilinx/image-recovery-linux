@@ -5,16 +5,15 @@
 # CGI script to scan and mount USB/UFS devices, then list files
 
 USB_MOUNT_DIR="usb_disk"
-USB_DEV_PATTERNS='SanDisk|Cruzer|Kingston|Flash|USB|Toshiba|TransMemory|Transcend|JetFlash|JFV'
-UFS_DEV_PATTERNS='MICRON|MT064GBCAV1U31AA'
 real_dev=""
 
 # Search for USB device
 for dev in /dev/disk/by-path/*usb*; do
 	[ -b "$dev" ] || continue
-	model=$(udevadm info --query=property --name="$dev" 2>/dev/null | grep '^ID_MODEL=' | cut -d= -f2)
-	if echo "$model" | grep -Eqi "$USB_DEV_PATTERNS"; then
+	model=$(udevadm info --query=property --name="$dev" 2>/dev/null | grep '^ID_BUS=' | cut -d= -f2)
+	if [ "$model" = "usb" ]; then
 		real_dev="$dev"
+		echo "Detected USB device: $real_dev"
 		break
 	fi
 done
@@ -23,9 +22,10 @@ done
 if [ -z "$real_dev" ]; then
 	for dev in /dev/sd*; do
 		[ -b "$dev" ] || continue
-		model=$(udevadm info --query=property --name="$dev" 2>/dev/null | grep '^ID_MODEL=' | cut -d= -f2)
-		if echo "$model" | grep -Eqi "$UFS_DEV_PATTERNS"; then
+		model=$(udevadm info --query=property --name="$dev" 2>/dev/null | grep '^ID_PATH=' | cut -d= -f2)
+		if echo "$model" | grep -qi "ufs"; then
 			real_dev="$dev"
+			echo "Detected UFS device: $real_dev"
 			break
 		fi
 	done
