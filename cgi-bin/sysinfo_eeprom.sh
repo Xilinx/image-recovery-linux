@@ -2,11 +2,25 @@
 # Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
-SYSINFO_FILE="sysinfo.bin"
+# Helper: Convert hex string (no spaces) to ASCII
+hex_to_ascii() {
+	local hex="$1"
+	local out=""
+	for ((i=0; i<${#hex}; i+=2)); do
+		out+=$(printf "\\x${hex:$i:2}")
+	done
+	echo -n "$out"
+}
 
-trap 'rm -f "$SYSINFO_FILE"' EXIT
+# Load IPMI utilities
+if ! source ./ipmi.sh; then
+	echo "Content-type: application/json"
+	echo ""
+	echo '{"error":"Failed to source ipmi.sh"}'
+	exit 1
+fi
 
-# Read EEPROM data
+# Find the first available EEPROM if not hardcoded
 EEPROM_PATH=""
 for eeprom in /sys/bus/i2c/devices/*/eeprom; do
 	if [ -f "$eeprom" ]; then
@@ -22,22 +36,49 @@ if [ -z "$EEPROM_PATH" ]; then
 	exit 1
 fi
 
-if ! cat "$EEPROM_PATH" > "$SYSINFO_FILE" 2>/dev/null; then
+# Allocate FRU index
+if ! ipmi_fru_alloc "$EEPROM_PATH" eeprom_idx; then
 	echo "Content-type: application/json"
 	echo ""
-	echo '{"error":"Failed to read EEPROM"}'
+	echo '{"error":"Failed to allocate FRU"}'
 	exit 1
 fi
 
-# Extract system board information
-brdnm=$(hexdump -s 0x16 -n6 -e '8/1 "%c"' "$SYSINFO_FILE" | tr -d '\000' | tr -cd 'A-Za-z0-9 ._-')
-revnum=$(hexdump -s 0x44 -n8 -e '8/1 "%c"' "$SYSINFO_FILE" | tr -d '\000' | tr -cd 'A-Za-z0-9 ._-')
-srlnum=$(hexdump -s 0x27 -n16 -e '8/1 "%c"' "$SYSINFO_FILE" | tr -d '\000' | tr -cd 'A-Za-z0-9 ._-')
-prtnum=$(hexdump -s 0x38 -n9 -e '8/1 "%c"' "$SYSINFO_FILE" | tr -d '\000' | tr -cd 'A-Za-z0-9 ._-')
-uuid=$(hexdump -s 0x56 -n16 -e '8/1 "%X"' "$SYSINFO_FILE" | tr -d '\000' | tr -cd 'A-Za-z0-9 ._-')
+# Read header and decode board area
+declare -a header=()
+if ! read_header "$eeprom_idx" header; then
+	echo "Content-type: application/json"
+	echo ""
+	echo '{"error":"Failed to read FRU header"}'
+	ipmi_fru_free "$eeprom_idx"
+	exit 1
+fi
 
-# Convert UUID to uppercase
-uuid="${uuid^^}"
+board_offset=${header[$IPMI_FRU_COMMON_HEADER_BOARD_OFFSET_IDX]}
+decode_output=$(decode_board_area "$eeprom_idx" "$board_offset")
+ipmi_fru_free "$eeprom_idx"
+
+# Extract main board fields
+brdnm=$(echo "$decode_output" | grep -E "FRU Board Product Name" | cut -d':' -f2- | xargs)
+srlnum=$(echo "$decode_output" | grep -E "FRU Board Serial Number" | cut -d':' -f2- | xargs)
+prtnum=$(echo "$decode_output" | grep -E "FRU Board Part Number" | cut -d':' -f2- | xargs)
+
+# Extract Revision Number
+revnum=$(echo "$decode_output" | grep "FRU Board Custom Info:" | grep -v "HEX" | while IFS=: read -r _ val; do
+val=$(echo "$val" | xargs)
+[ -n "$val" ] && echo "$val" && break
+done)
+
+if [ -z "$revnum" ]; then
+	hexrev=$(echo "$decode_output" | grep "FRU Board Custom Info HEX:" | head -n 1 | cut -d':' -f2- | xargs)
+	if [ -n "$hexrev" ]; then
+		revnum=$(hex_to_ascii "$hexrev" | tr -cd 'A-Za-z0-9._-')
+	fi
+fi
+
+# Extract UUID (last HEX custom info, clean format)
+uuid_hex=$(echo "$decode_output" | grep "FRU Board Custom Info HEX:" | tail -n 1 | cut -d':' -f2-)
+uuid=$(echo "$uuid_hex" | tr -d ' ' | tr -d 'hH' | tr -cd '0-9a-fA-F' | tr 'a-f' 'A-F')
 
 # Output JSON response
 echo "Content-type: application/json"
