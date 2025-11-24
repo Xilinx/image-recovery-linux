@@ -228,6 +228,13 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 
 						echo "FLASH_STATUS=SUCCESS"
 						echo "FLASH_REASON=WIC image flashed successfully to $real_dev"
+						if fw_printenv >/dev/null 2>&1; then
+							 fw_setenv BOOT_ORDER "A B"
+							 fw_setenv BOOT_A_LEFT 3
+							 echo "Boot will switch to slot A"
+						 else
+							 echo "U-Boot environment not found, skipping BOOT_ORDER update"
+						 fi
 					fi
 
 					# Clean up uploaded file
