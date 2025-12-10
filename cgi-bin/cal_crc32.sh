@@ -39,7 +39,7 @@ if ! printf -v crc32_mdata_bin "\\x%s\\x%s\\x%s\\x%s" \
 fi
 
 # Write CRC32 to the beginning of the file
-if ! printf "%s" "$crc32_mdata_bin" | dd of="$FILE" bs=1 count=4 conv=notrunc 2>/dev/null; then
+if ! printf "%b" "$crc32_mdata_bin" | dd of="$FILE" bs=1 count=4 conv=notrunc 2>/dev/null; then
 	echo "Error: Failed to write CRC32 to file" >&2
 	exit 1
 fi
