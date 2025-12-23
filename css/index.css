@@ -262,6 +262,26 @@ table {
 	background: #000000;
 }
 
+.boot-info {
+        background: #000000;
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 12px 18px;
+        margin: 10px 10px 0 10px;
+        width: 90%;
+}
+
+.boot-info p {
+        margin: 8px 0;
+        font-size: 16px;
+}
+
+.boot-info-label {
+        display: inline-block;
+        font-weight: 600;
+        min-width: 170px;
+}
+
 .sysimginfotbl td:nth-child(1) {
 	width: 20%;
 	font-size: 20px;
