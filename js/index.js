@@ -4,6 +4,34 @@
 */
 var objPage, dotInterval, ImgCrc;
 
+function renderBootInfo(info) {
+        const versionActiveEl = document.getElementById("boot_version_active");
+        const versionPrevEl = document.getElementById("boot_version_prev");
+
+        const versionActive = info && info.version_active ? String(info.version_active).trim() : "";
+        const versionPrev = info && info.version_prev ? String(info.version_prev).trim() : "";
+
+        versionActiveEl.textContent = versionActive || "--";
+        versionPrevEl.textContent = versionPrev || "--";
+}
+
+function fetchInstalledBootInfo() {
+        const http = new XMLHttpRequest();
+        http.open("GET", "cgi-bin/boot_info.sh", true);
+        http.onload = function() {
+                try {
+                        const payload = JSON.parse(this.responseText);
+                        renderBootInfo(payload);
+                } catch (err) {
+                        renderBootInfo(null);
+                }
+        };
+        http.onerror = function() {
+                renderBootInfo(null);
+        };
+        http.send();
+}
+
 function handleFlashResponse(responseText, target) {
 	const statusMatch = responseText.match(/FLASH_STATUS=(\w+)/);
 	const reasonMatch = responseText.match(/FLASH_REASON=(.+)/);
@@ -52,6 +80,9 @@ function handleFlashResponse(responseText, target) {
 			statusField.style.visibility = "hidden";
 		}, 5000);
 	}
+	if (status === "SUCCESS") {
+                fetchInstalledBootInfo();
+        }
 }
 
 function onPageLoad() {
@@ -108,6 +139,7 @@ function onPageLoad() {
 	document.getElementById("upld_btn").addEventListener("CrcDone", onCrcComplete);
 	document.getElementById("upld_btn").addEventListener("FlashEraseDone", initiateImgUpload);
 	document.body.addEventListener('DOMContentLoaded', OpenTab(event, 'System Information'));
+	fetchInstalledBootInfo();
 }
 
 function onUsbTab() {
