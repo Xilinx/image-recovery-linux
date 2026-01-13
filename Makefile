@@ -4,7 +4,7 @@
 localstatedir ?= /var
 IMGRCVRYDIR = $(localstatedir)/imgrcry_web
 
-INSTALLFILES := about.html help.html index.html cgi-bin css image js
+INSTALLFILES := help.html index.html cgi-bin css image js
 
 .PHONY: install clean
 
