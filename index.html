@@ -1,222 +1,219 @@
 <!--
-* Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+* Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 * SPDX-License-Identifier: MIT
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>AMD SBIRT</title>
-	<link rel="stylesheet" type="text/css" href="css/index.css">
-	<link rel="icon" href="image/amd_symbol.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AMD System Boot Image Recovery Tool">
+    <title>AMD SBIRT</title>
+    <link rel="icon" type="image/x-icon" href="image/amd_symbol.ico">
+    <link rel="stylesheet" href="css/index.css">
+    <script src="js/index.js" defer></script>
 </head>
-<body onload="onPageLoad()">
-	<div class="header">
-		<embed class="header_img" src="image/amdlogo.svg">
-		<span class="header_title"> System Boot Image Recovery Tool </span>
-	</div>
+<body>
+    <header class="header">
+        <div class="logo">
+            <img src="image/amdlogo.svg" alt="AMD Logo" loading="lazy" onerror="this.style.display='none'">
+        </div>
+        <h1 class="header-title">System Boot Image Recovery Tool</h1>
+        <nav class="nav-buttons" aria-label="Main navigation">
+            <a href="help.html" class="nav-link" aria-label="Help section">HELP</a>
+        </nav>
+    </header>
 
-	<div class="tab">
-		<button class="tablinks" onclick="OpenTab(event, 'System Information')">System Information</button>
-		<button class="tablinks" onclick="OpenTab(event, 'Ethernet Recovery')">Ethernet Recovery</button>
-		<button class="tablinks" onclick="OpenTab(event, 'USB Recovery')">USB Recovery</button>
-	</div>
+    <main class="main-content">
+        <div class="content-grid">
+            <aside class="right-sidebar">
+                <button class="action-btn active">System Information</button>
+                <button class="action-btn">Ethernet Recovery</button>
+                <button class="action-btn">USB Recovery</button>
+            </aside>
 
-	<div id="System Information" class="tabcontent">
-		<div class="navbar">
-			<a href="about.html" target="_blank">About</a>
-		</div>
+            <div class="content-display">
+                <div id="system-info-content" class="content-section">
+                    <div class="row_body">
+                        <div class="column_body">
+                            <h2>System Board Information</h2><hr>
+                            <table class="sysinfotbl"><tbody id="sysboard-tbody"></tbody></table>
+                        </div>
+                        <div class="column_body">
+                            <h2>Boot Image Current Status</h2><hr>
+                            <table class="sysinfotbl"><tbody id="boot-status-tbody"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="row_body row_body--spaced">
+                        <div class="column_body column_body--carrier hidden" id="carrier-card-section">
+                            <h2>Carrier Card Information</h2><hr>
+                            <table class="sysinfotbl"><tbody id="carrier-tbody"></tbody></table>
+                        </div>
+                    </div>
+                </div>
 
-		<div class="row_body">
-			<div class="column_body">
-				<h2>System Board Information </h2>
-				<hr>
-				<table class="sysinfotbl" id="sysboardtbl">
-					<tr>
-						<td>Name :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Revision # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Serial # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Part # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>UUID :</td>
-						<td> </td>
-					</tr>
-				</table>
-			</div>
+                <div id="ethernet-recovery-content" class="content-section hidden">
+                    <div class="recovery-header">
+                        <h1>Ethernet Recovery Options</h1>
+                        <p class="recovery-description">Select a recovery image type to update system images via Ethernet connection</p>
+                    </div>
+                    <div class="recovery-buttons-container">
+                        <div class="recovery-item">
+                            <input type="file" id="boot-image-input" accept=".bin" class="file-input">
+                            <button class="recovery-action-btn" id="boot-image-btn">
+                                <div class="btn-title">Boot Image</div>
+                                <div class="btn-subtitle">BOOT.bin A/B image</div>
+                            </button>
+                        </div>
+                        <div class="recovery-item">
+                            <input type="file" id="wic-image-input" accept=".wic,.xz" class="file-input">
+                            <button class="recovery-action-btn" id="wic-image-btn">
+                                <div class="btn-title">WIC Image</div>
+                                <div class="btn-subtitle">eMMC/SD card image</div>
+                            </button>
+                        </div>
+                        <div class="recovery-item hidden" id="bmap-file-container">
+                            <input type="file" id="bmap-file-input" accept=".bmap" class="file-input">
+                            <button class="recovery-action-btn" id="bmap-file-btn">
+                                <div class="btn-title">BMAP File</div>
+                                <div class="btn-subtitle">Block map file</div>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="file-info-container">
+                        <div class="file-info" id="boot-image-info"></div>
+                        <div class="file-info" id="wic-image-info"></div>
+                        <div class="file-info" id="bmap-file-info"></div>
+                    </div>
+                    <div class="file-info-container">
+                        <div class="file-info bmap-note" id="bmap-note"></div>
+                    </div>
+                    <div class="device-selection-container hidden" id="wic-device-selection">
+                        <label for="wic-storage-device" class="device-label">Select Target Storage Device:</label>
+                        <select id="wic-storage-device" class="device-dropdown">
+                            <option value="">Loading devices...</option>
+                        </select>
+                        <button class="refresh-device-btn" id="refresh-wic-devices" title="Refresh device list">⟳</button>
+                    </div>
+                    <div class="progress-container hidden" id="boot-image-progress-container">
+                        <div class="progress-bar"><div class="progress-fill" id="boot-image-progress-fill"></div></div>
+                        <div class="progress-text" id="boot-image-progress-text">0%</div>
+                    </div>
+                    <div class="progress-container hidden" id="wic-image-progress-container">
+                        <div class="progress-bar"><div class="progress-fill" id="wic-image-progress-fill"></div></div>
+                        <div class="progress-text" id="wic-image-progress-text">0%</div>
+                    </div>
+                    <div class="upload-button-container">
+                        <button class="upload-btn hidden" id="boot-image-upload-btn">Upload</button>
+                        <button class="upload-btn hidden" id="wic-image-upload-btn">Upload</button>
+                    </div>
+                </div>
 
-			<div class="column_body">
-				<h2>Carrier Card Information (Optional)</h2>
-				<hr>
-				<table class="sysinfotbl" id="cctbl">
-					<tr>
-						<td>Name :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Revision # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Serial # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>Part # :</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>UUID :</td>
-						<td> </td>
-					</tr>
-				</table>
-			</div>
-		</div>
+                <div id="usb-recovery-content" class="content-section hidden">
+                    <div class="recovery-header">
+                        <h1>USB Recovery Options</h1>
+                        <p class="recovery-description">Select a recovery image type to update system images via USB connection</p>
+                    </div>
+                    <div class="recovery-buttons-container">
+                        <button class="recovery-action-btn" id="usb-boot-image-btn">
+                            <div class="btn-title">Boot Image</div>
+                            <div class="btn-subtitle">BOOT.bin A/B image</div>
+                        </button>
+                        <button class="recovery-action-btn" id="usb-wic-image-btn">
+                            <div class="btn-title">WIC Image</div>
+                            <div class="btn-subtitle">eMMC/SD card image</div>
+                        </button>
+                        <button class="recovery-action-btn hidden" id="usb-bmap-file-btn">
+                            <div class="btn-title">BMAP File</div>
+                            <div class="btn-subtitle">Block map file (USB)</div>
+                        </button>
+                    </div>
+                    <div class="file-info-container">
+                        <div class="file-info" id="usb-boot-image-info"></div>
+                        <div class="file-info" id="usb-wic-image-info"></div>
+                        <div class="file-info" id="usb-bmap-file-info"></div>
+                    </div>
+                    <div class="file-info-container">
+                        <div class="file-info bmap-note" id="usb-bmap-note"></div>
+                    </div>
+                    <div class="device-selection-container hidden" id="usb-wic-device-selection">
+                        <label for="usb-wic-storage-device" class="device-label">Select Target Storage Device:</label>
+                        <select id="usb-wic-storage-device" class="device-dropdown">
+                            <option value="">Loading devices...</option>
+                        </select>
+                        <button class="refresh-device-btn" id="refresh-usb-wic-devices" title="Refresh device list">⟳</button>
+                    </div>
+                    <div class="progress-container hidden" id="usb-boot-image-progress-container">
+                        <div class="progress-bar"><div class="progress-fill" id="usb-boot-image-progress-fill"></div></div>
+                        <div class="progress-text" id="usb-boot-image-progress-text">0%</div>
+                    </div>
+                    <div class="progress-container hidden" id="usb-wic-image-progress-container">
+                        <div class="progress-bar"><div class="progress-fill" id="usb-wic-image-progress-fill"></div></div>
+                        <div class="progress-text" id="usb-wic-image-progress-text">0%</div>
+                    </div>
+                    <div class="upload-button-container">
+                        <button class="upload-btn hidden" id="usb-boot-image-upload-btn">Upload</button>
+                        <button class="upload-btn hidden" id="usb-wic-image-upload-btn">Upload</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
-		<div class="row_body">
-			<div class="column_body">
-				<h2>Boot Image Status</h2>
-				<hr>
-				<div class="row_body">
-					<div class="sysimginfo">
-						<table id="sysimginfotbl">
-							<tr class="sysimginfotbl">
-								<td rowspan="4">Current Status</td>
-								<td style="width:40%; text-align: right;">Bank A : </td>
-								<td> </td>
-							</tr>
-							<tr>
-								<td style="text-align: right;">Bank B : </td>
-								<td> </td>
-							</tr>
-							<tr>
-								<td style="text-align: right;">Active Bank : </td>
-								<td> </td>
-							</tr>
-							<tr>
-								<td style="text-align: right;">Previous Active Bank : </td>
-								<td> </td>
-							</tr>
-						</table>
-					</div>
-				</div>
-				<h2 style="margin-top:15px;">Installed Boot Image</h2>
-                                <hr>
-                                <div class="boot-info" id="bootStatusCard">
-                                        <p><span class="boot-info-label">Bank A :</span><span id="boot_version_active">--</span></p>
-                                        <p><span class="boot-info-label">Bank B :</span><span id="boot_version_prev">--</span></p>
-                                </div>
-			</div>
-		</div>
-	</div>
+    <footer class="footer"><p>© 2026 AMD</p><p class="footer-right">V 1.1</p></footer>
 
-	<div id="Ethernet Recovery" class="tabcontent">
-		<div class="navbar">
-			<a href="help.html" target="_blank">Help</a>
-		</div>
-		<div class="column_body">
-			<h2>Ethernet Recovery Image</h2>
-			<hr>
-			<form id="eth_form" action="/cgi-bin/eth_write.sh" method="POST" enctype="multipart/form-data" style="padding:1px 0 0 10px">
-				<button type="button" id="brws_btn" class="btn btn_brws" onclick="onBrws()">Browse</button>
-				<input type="text" class="file_info file_name" id="fileName" readonly>
-				<input type="text" class="file_info" id="fileSize" readonly>
-				<input type="file" accept=".bin,.wic,.xz,.bmap" id="img_file" name="img_file">
-				<p><b>Select Image to be recovered</b></p>
-				<input type="radio" id="recAimg" name="recimg" value=0>
-				<label id="recALabel" for="recAimg">Boot Image (BOOT.bin A/B image)</label><br>
-				<input type="radio" id="recWICimg" name="recimg" value=1>
-				<label id="recWICLabel" for="recWICimg">Wic Image (eMMC/SD)</label><br> <br>
-				<button type="button" id="upld_btn" class="btn btn_act" onclick="onUpload()" disabled>Upload</button>
-				<progress id="upld_prgrs" value="0" max="100" style="width:400px;"> 0% </progress>
-				<br><input type="text" class="upld_status" id="upld_status" readonly><br>
-				<textarea id="eth_flash_status" class="upld_status" readonly rows="3" style="width:100%;"></textarea>
-			</form>
-		</div>
-	</div>
+    <div id="custom-modal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Upload Status</h3>
+                <button class="modal-close" id="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer"><button class="modal-btn" id="modal-ok-btn">OK</button></div>
+        </div>
+    </div>
 
-	<div id="USB Recovery" class="tabcontent">
-		<div class="navbar">
-			<a href="help.html" target="_blank">Help</a>
-		</div>
-
-		<div class="column_body">
-			<h2>USB Recovery Image</h2>
-			<hr>
-			<div style="padding:1px 0 0 10px">
-				<button type="button" id="brws_btn_usb" class="btn btn_brws" onclick="onBrws_usb()">Scan USB Device</button>
-				<table class="usb_filestbl" id="usb_files">
-					<tr>
-						<td>
-							<div class="radio">
-							<label><input type="radio" id="usb_file1" name="optradio"></label>
-							</div>
-						</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>
-							<div class="radio">
-							<label><input type="radio" id="usb_file2" name="optradio"></label>
-							</div>
-						</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>
-							<div class="radio">
-							<label><input type="radio" id="usb_file3" name="optradio"></label>
-							</div>
-						</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>
-							<div class="radio">
-							<label><input type="radio" id="usb_file4" name="optradio"></label>
-							</div>
-						</td>
-						<td> </td>
-					</tr>
-					<tr>
-						<td>
-							<div class="radio">
-							<label><input type="radio" id="usb_file5" name="optradio"></label>
-							</div>
-						</td>
-						<td> </td>
-					</tr>
-				</table>
-				<input type="file" accept=".bin,.wic,.xz,.bmap" id="img_file_usb" name="img_file_usb">
-				<p><b>Select Image to be recovered</b></p>
-				<input type="radio" id="recAimg_usb" name="recimg_usb" value=0>
-				<label id="recALabel_usb" for="recAimg_usb">Boot Image (BOOT.bin A/B image)</label><br>
-				<input type="radio" id="recWICimg_usb" name="recimg_usb" value=3>
-				<label id="recWICLabel_usb" for="recWICimg_usb">Wic Image (eMMC/SD)</label><br> <br>
-				<button type="button" id="upld_btn_usb" class="btn btn_act" onclick="onUpload_usb()">Upload</button>
-				<progress id="upld_prgrs_usb" value="0" max="100" style="width:400px;"> 0% </progress>
-				<br><input type="text" class="upld_status_usb" id="upld_status_usb" readonly><br>
-				<textarea id="usb_flash_status" class="upld_status_usb" readonly rows="3" style="width:100%; visibility:hidden;"></textarea>
-			</div>
-		</div>
-	</div>
-
-	<div class="footer">
-		<b>&copy 2025 AMD</b>
-		<b style="margin-right:10px; float:right;">Version: 1.0</b>
-	</div>
-
-	<script src="js/index.js"></script>
+    <div id="custom-modal-2" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="modal-2-title">
+        <div class="modal-content usb-picker-content">
+            <div class="modal-header">
+                <h3 id="modal-2-title">Modal Title</h3>
+                <button class="modal-close" id="modal-2-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body usb-picker-body" id="modal-2-body">
+                <div class="usb-status-container">
+                    <div class="usb-status" id="usb-scan-status">Scanning USB devices...</div>
+                    <button class="refresh-btn" id="modal-refresh-btn"><span>⟳</span> Refresh</button>
+                </div>
+                <div class="explorer-layout">
+                    <div class="explorer-sidebar">
+                        <div class="sidebar-header">📱 USB Devices</div>
+                        <div class="folder-tree" id="folder-tree"></div>
+                    </div>
+                    <div class="explorer-main">
+                        <div class="file-table-container">
+                            <table class="file-table" id="file-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-name">
+                                            <span>Name</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="file-table-body">
+                                    <tr class="empty-row">
+                                        <td colspan="1" class="empty-message">Select a folder to view files</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" id="modal-cancel-btn">Cancel</button>
+                <button class="modal-btn" id="modal-select-btn" disabled>Open</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
