@@ -1,110 +1,228 @@
 <!--
-* Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+* Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 * SPDX-License-Identifier: MIT
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>AMD SBIRT - Help</title>
-	<link rel="stylesheet" type="text/css" href="css/index.css">
-	<link rel="icon" href="image/amd_symbol.ico">
-	<style>
-		.help-content {
-			margin: 20px 10px 0 10px;
-		}
-		.help-content h2 {
-			margin: 20px 10px 0 10px;
-		}
-		.help-content hr {
-			border: 1px solid red;
-		}
-		.help-content p {
-			font-size: 20px;
-		}
-		.help-content .section-title {
-			font-weight: bold;
-			color: #e00000;
-		}
-	</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AMD System Boot Image Recovery Tool - Help Documentation">
+    <title>AMD SBIRT - Help</title>
+    <link rel="icon" type="image/x-icon" href="image/amd_symbol.ico">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        .help-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        .help-section {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .help-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .help-section h3 {
+            color: var(--secondary-light);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .help-section p, .help-section li {
+            line-height: 1.6;
+            margin-bottom: 10px;
+            color: var(--text-darker);
+        }
+        .help-section ul, .help-section ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        .help-section code {
+            background-color: #2a2a2a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--secondary-lighter);
+            font-family: monospace;
+        }
+        .warning-box {
+            background-color: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .warning-box strong {
+            color: var(--secondary-color);
+        }
+        .info-box {
+            background-color: rgba(0, 188, 212, 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info-box strong {
+            color: var(--primary-color);
+        }
+        .step-number {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--bg-dark);
+            width: 25px;
+            height: 25px;
+            line-height: 25px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background-color: var(--primary-color);
+            color: var(--bg-dark);
+        }
+    </style>
 </head>
 <body>
-	<div class="header">
-		<embed class="header_img" src="image/amdlogo.svg">
-		<span class="header_title"> System Boot Image Recovery Tool </span>
-	</div>
+    <header class="header">
+        <div class="logo">
+            <img src="image/amdlogo.svg" alt="AMD Logo" loading="lazy" onerror="this.style.display='none'">
+        </div>
+        <h1 class="header-title">System Boot Image Recovery Tool - Help</h1>
+        <nav class="nav-buttons" aria-label="Main navigation">
+            <a href="index.html" class="nav-link" aria-label="Return to main page">HOME</a>
+        </nav>
+    </header>
 
-	<div class="help-content">
-		<h2>Help</h2>
-		<hr>
-		<p>
-			The Boot Image Recovery Tool helps to revive the board that is
-			dead due to corrupt images. Please see more information about
-			the tool by clicking 'About' button above.
-		</p>
+    <main class="main-content">
+        <div class="help-content">
+            <a href="index.html" class="back-link">← Back to Main Page</a>
 
-		<p class="section-title">
-			System Board Information
-		</p>
+            <div class="help-section">
+                <h2>Overview</h2>
+                <p>The AMD System Boot Image Recovery Tool (SBIRT) is a web-based interface designed to help you recover and update boot images on AMD embedded systems. This tool provides an intuitive way to manage system firmware and image recovery through either Ethernet or USB connections.</p>
+                <div class="info-box">
+                    <strong>Note:</strong> This tool requires appropriate permissions and network access to function properly. Ensure you have the necessary credentials before proceeding with recovery operations.
+                </div>
+            </div>
 
-		<p>
-			This section displays the information specific to system board.
-			It shows product name, serial #, part #, UUID, primary
-			and secondary boot device name, and PS-PL DDR memory size.
-		</p>
+            <div class="help-section">
+                <h2>System Information</h2>
+                <p>The System Information section displays critical details about your system board and current boot image status.</p>
+                <h3>System Board Information</h3>
+                <p>Shows hardware details including:</p>
+                <ul>
+                    <li>Board name and model</li>
+                    <li>Serial number</li>
+                    <li>Manufacturing date</li>
+                    <li>Hardware revision</li>
+                </ul>
 
-		<p class="section-title">
-			CC Information
-		</p>
+                <h3>Boot Image Current Status</h3>
+                <p>Displays the current state of boot images on the system:</p>
+                <ul>
+                    <li>Active boot partition (A or B)</li>
+                    <li>Boot image version</li>
+                    <li>CRC32 checksum validation</li>
+                    <li>Image integrity status</li>
+                </ul>
 
-		<p>
-			This section displays the information specific to Carrier Card.
-			It shows carrier card name, serial #, part #, and UUID.
-		</p>
+                <h3>Carrier Card Information</h3>
+                <p>If applicable, displays information about any attached carrier cards or expansion modules.</p>
+            </div>
 
-		<p class="section-title">
-			Boot Images Status
-		</p>
+            <div class="help-section">
+                <h2>Ethernet Recovery</h2>
+                <p>Use Ethernet Recovery to upload boot images and WIC (Wic Image Creator) images directly from your computer to the system via network connection.</p>
 
-		<p>
-			The user don't need to touch this section and it is managed
-			internally by this tool, however advance user can use this to
-			mark image A and B as bootable or non bootable. Also advance
-			user can tell the system to boot which image (A/B) on next power
-			cycle. This section also shows name of the last image
-			successfully booted.
-		</p>
+                <h3>Boot Image Recovery (.bin files)</h3>
+                <p><strong>Step-by-step process:</strong></p>
+                <ol>
+                    <li><span class="step-number">1</span>Click the "Boot Image" button</li>
+                    <li><span class="step-number">2</span>Select a <code>.bin</code> file from your computer</li>
+                    <li><span class="step-number">3</span>Verify the file information displayed</li>
+                    <li><span class="step-number">4</span>Click the "Upload" button to begin the transfer</li>
+                    <li><span class="step-number">5</span>Monitor the progress bar for upload status</li>
+                    <li><span class="step-number">6</span>Wait for confirmation of successful upload</li>
+                </ol>
 
-		<p class="section-title">
-			Recover Image
-		</p>
+                <div class="warning-box">
+                    <strong>Warning:</strong> Interrupting the upload process may corrupt the boot image and render the system unbootable. Ensure a stable network connection before starting the upload.
+                </div>
 
-		<p>
-			This section allows user to upload the new image from the user
-			computer to system board. User should first select new bootable image
-			by clicking on Browse button and selecting the file to be
-			uploaded. User can overwrite either image A or image B.
-			This tool allows user to upload image one at a time. By default
-			system selects the image other than last successfully
-			booted image to update automatically. So even if upload fails,
-			system will have last successfully booted image as a backup.
-			If user want to upload new image to overwrite both images A and
-			B, he/she should upload it twice by appropriately selecting the
-			image to be updated using radio button provided.
+                <h3>WIC Image Recovery (.wic or .wic.xz files)</h3>
+                <p>WIC images are used for eMMC or SD card recovery. The process is similar to Boot Image recovery:</p>
+                <ol>
+                    <li><span class="step-number">1</span>Click the "WIC Image" button</li>
+                    <li><span class="step-number">2</span>Select a <code>.wic</code> or <code>.wic.xz</code> file</li>
+                    <li><span class="step-number">3</span>If using a compressed image (.xz), optionally select a BMAP file for faster flashing</li>
+                    <li><span class="step-number">4</span>Review file information and click "Upload"</li>
+                    <li><span class="step-number">5</span>Monitor progress and wait for completion</li>
+                </ol>
 
-			On clicking Upload button, system asks for confirmation for
-			upload and if user confirm upload, it shows the prpogress of the
-			impage upload in progress bar. Test under upload shows steps
-			getting executed to upload the new image. Once image is
-			successfully uploaded, power cycle the system to get new image
-			booted.
-		</p>
-	</div>
+                <div class="info-box">
+                    <strong>BMAP Files:</strong> Block map files (.bmap) significantly speed up the flashing process by only writing data blocks that contain actual data, skipping empty blocks. Using a BMAP file is highly recommended for large WIC images.
+                </div>
 
-	<div class="footer">
-		<b>&copy 2025 AMD</b>
-		<b style="margin-right:10px; float:right;" id="version"></b>
-	</div>
+                <h3>Upload Progress</h3>
+                <p>During the upload process:</p>
+                <ul>
+                    <li>A progress bar shows the upload percentage</li>
+                    <li>File size and transfer rate may be displayed</li>
+                    <li>Do not close the browser or navigate away from the page</li>
+                    <li>Do not disconnect the network cable</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h2>USB Recovery</h2>
+                <p>USB Recovery allows you to select and apply boot images stored on USB drives connected to the system.</p>
+
+                <h3>Preparing USB Device</h3>
+                <ol>
+                    <li>Format a USB drive with a FAT32 or ext4 filesystem</li>
+                    <li>Copy the desired <code>.bin</code> (boot image) or <code>.wic/.wic.xz</code> (WIC image) files to the USB drive</li>
+                    <li>If using compressed WIC images, include the corresponding <code>.bmap</code> file</li>
+                    <li>Safely eject the USB drive from your computer</li>
+                    <li>Connect the USB drive to the target system</li>
+                </ol>
+
+                <h3>USB Recovery Process</h3>
+                <ol>
+                    <li><span class="step-number">1</span>Navigate to the "USB Recovery" section</li>
+                    <li><span class="step-number">2</span>Click either "Boot Image" or "WIC Image" button</li>
+                    <li><span class="step-number">3</span>A file picker modal will appear showing available USB devices</li>
+                    <li><span class="step-number">4</span>Select the desired file from the list</li>
+                    <li><span class="step-number">5</span>Click "Open" to confirm selection</li>
+                    <li><span class="step-number">6</span>If needed, select the BMAP file for WIC images</li>
+                    <li><span class="step-number">7</span>Click "Upload" to begin the recovery process</li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>Refresh Button:</strong> If your USB device is not detected, use the refresh button in the file picker to rescan for connected USB devices.
+                </div>
+            </div>
+
+            <a href="index.html" class="back-link">← Back to Main Page</a>
+        </div>
+    </main>
+
+    <footer class="footer"><p>© 2026 AMD</p><p class="footer-right">V 1.1</p></footer>
 </body>
 </html>
