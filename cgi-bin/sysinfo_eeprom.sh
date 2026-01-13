@@ -1,18 +1,17 @@
 #!/bin/sh
-# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
 # Helper: Convert hex string (no spaces) to ASCII
 hex_to_ascii() {
 	local hex="$1"
-	local out=""
 	for ((i=0; i<${#hex}; i+=2)); do
-		out+=$(printf "\\x${hex:$i:2}")
+		printf '%b' "\\x${hex:$i:2}"
 	done
-	echo -n "$out"
 }
 
 # Load IPMI utilities
+# shellcheck source=./ipmi.sh
 if ! source ./ipmi.sh; then
 	echo "Content-type: application/json"
 	echo ""
@@ -37,6 +36,7 @@ if [ -z "$EEPROM_PATH" ]; then
 fi
 
 # Allocate FRU index
+eeprom_idx=""
 if ! ipmi_fru_alloc "$EEPROM_PATH" eeprom_idx; then
 	echo "Content-type: application/json"
 	echo ""
@@ -81,8 +81,9 @@ uuid_hex=$(echo "$decode_output" | grep "FRU Board Custom Info HEX:" | tail -n 1
 uuid=$(echo "$uuid_hex" | tr -d ' ' | tr -d 'hH' | tr -cd '0-9a-fA-F' | tr 'a-f' 'A-F')
 
 # Output JSON response
-echo "Content-type: application/json"
-echo ""
-echo '{"SysBoardInfo":{"BoardName":"'"${brdnm}"'","RevisionNo":"'"${revnum}"'","SerialNo":"'"${srlnum}"'","PartNo":"'"${prtnum}"'","UUID":"'"${uuid}"'"},"CcInfo":{"BoardName":"","RevisionNo":"","SerialNo":"","PartNo":"","UUID":""}}'
+printf "Content-type: application/json\n"
+printf "\n"
+printf '{"SysBoardInfo":{"BoardName":"%s","RevisionNo":"%s","SerialNo":"%s","PartNo":"%s","UUID":"%s"},"CcInfo":{"BoardName":"","RevisionNo":"","SerialNo":"","PartNo":"","UUID":""}}\n' \
+	"$brdnm" "$revnum" "$srlnum" "$prtnum" "$uuid"
 
 exit 0
