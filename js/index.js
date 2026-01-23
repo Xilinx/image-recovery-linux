@@ -958,8 +958,31 @@ class UploadManager {
                 if (device) {
                     uploadXhr.setRequestHeader('X-Target-Device', device);
                 }
-                uploadXhr.onload = () => resolve(uploadXhr);
-                uploadXhr.onerror = () => reject(new Error('File upload failed'));
+                uploadXhr.onload = () => {
+                    console.log('Upload Status Code:', uploadXhr.status);
+                    // Check for HTTP 0 (Payload Too Large) for Ethernet uploads
+                    if (!isUSB && uploadXhr.status === 0) {
+                        reject(new Error('FILE_TOO_LARGE'));
+                    } else if (uploadXhr.status >= 400) {
+                        // Any other HTTP error
+                        reject(new Error(`HTTP ${uploadXhr.status}: Upload failed`));
+                    } else if (uploadXhr.status >= 200 && uploadXhr.status < 300) {
+                        // Success status codes (200-299)
+                        resolve(uploadXhr);
+                    } else {
+                        // Unexpected status code
+                        reject(new Error(`Unexpected status: ${uploadXhr.status}`));
+                    }
+                };
+                uploadXhr.onerror = () => {
+                    console.log('Upload Error - Status Code:', uploadXhr.status || 0);
+                    // Check if this is likely a file size issue (status 0 for Ethernet uploads)
+                    if (!isUSB && (uploadXhr.status === 0 || !uploadXhr.status)) {
+                        reject(new Error('FILE_TOO_LARGE'));
+                    } else {
+                        reject(new Error('File upload failed'));
+                    }
+                };
                 uploadXhr.send(fileData);
             });
 
@@ -1106,6 +1129,34 @@ class UploadManager {
             xhr.send('FLASH');
         }).catch(error => {
             console.error('File upload error:', error);
+
+            // Enhanced error handling for Ethernet uploads
+            if (!isUSB) {
+                if (error.message === 'FILE_TOO_LARGE') {
+                    this.handleFailure('File Too Large', {
+                        'Error': 'File exceeds maximum upload size',
+                        'Details': 'The server rejected the file (HTTP 0). Please use a smaller file.',
+                        'Suggestion': 'Maximum file size may be limited by server configuration'
+                    }, isUSB, config);
+                    return;
+                }
+                // Check for quota errors
+                if (error.message && (
+                    error.message.includes('quota') ||
+                    error.message.includes('storage') ||
+                    error.message.includes('disk') ||
+                    error.message.includes('space')
+                )) {
+                    this.handleFailure('Storage Error', {
+                        'Error': 'Insufficient storage space',
+                        'Details': error.message,
+                        'Suggestion': 'Free up space on the target device and try again'
+                    }, isUSB, config);
+                    return;
+                }
+            }
+
+            // Default error handling
             this.handleFailure('Upload Failed', {
                 'Error': 'File upload failed',
                 'Details': error.message
