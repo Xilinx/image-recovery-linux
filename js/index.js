@@ -904,7 +904,8 @@ class UploadManager {
             status: /FLASH_STATUS=(\w+)/,
             reason: /FLASH_REASON=([^\n]+)/,
             version: /FLASH_VERSION=([^\n]+)/,
-            buildDate: /FLASH_BUILD_DATE=([^\n]+)/
+            buildDate: /FLASH_BUILD_DATE=([^\n]+)/,
+            logFile: /FLASH_LOG=([^\n]+)/
         };
     }
 
@@ -1039,20 +1040,22 @@ class UploadManager {
                     status: data.match(this.responsePatterns.status)?.[1] || 'UNKNOWN',
                     reason: data.match(this.responsePatterns.reason)?.[1] || 'Unknown response',
                     version: data.match(this.responsePatterns.version)?.[1],
-                    buildDate: data.match(this.responsePatterns.buildDate)?.[1]
+                    buildDate: data.match(this.responsePatterns.buildDate)?.[1],
+                    logFile: data.match(this.responsePatterns.logFile)?.[1]
                 };
             };
 
             xhr.addEventListener('load', () => {
                 if (xhr.status === 200) {
-                    const { status, reason, version, buildDate } = parseResponse(xhr.responseText);
+                    const { status, reason, version, buildDate, logFile } = parseResponse(xhr.responseText);
 
                     if (status === 'SUCCESS') {
                         const details = {
                             'File': fileName,
                             'Status': reason,
                             ...(version && { 'Version': version }),
-                            ...(buildDate && { 'Build Date': buildDate })
+                            ...(buildDate && { 'Build Date': buildDate }),
+                            ...(logFile && { 'Log File': logFile })
                         };
 
                         if (validate) {
