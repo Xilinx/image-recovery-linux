@@ -48,7 +48,7 @@ read_bytes() {
 	local size="$3"
 
 	dd if="$eeprom" bs=1 skip="$offset" count="$size" status=none 2>/dev/null | \
-	hexdump -v -e '1/1 "%d "'
+	hexdump -v -e '1/1 "%u "'
 }
 
 # Read and validate the FRU header (8 bytes)
@@ -126,6 +126,7 @@ decode_board_area() {
 
 		for ((i = 0; i < len && idx < end_offset; i++)); do
 			local byte=${board_bytes[$((idx++))]}
+			byte=$((byte & 0xFF))
 			hexval+=$(printf "%02X" "$byte")
 
 			if (( byte >= 32 && byte <= 126 )); then
