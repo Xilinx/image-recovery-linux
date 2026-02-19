@@ -12,6 +12,7 @@
     <link rel="icon" type="image/x-icon" href="image/amd_symbol.ico">
     <link rel="stylesheet" href="css/index.css">
     <script src="js/index.js" defer></script>
+    <script src="js/ufs_config.js" defer></script>
 </head>
 <body>
     <header class="header">
@@ -30,6 +31,7 @@
                 <button class="action-btn active">System Information</button>
                 <button class="action-btn">Ethernet Recovery</button>
                 <button class="action-btn">USB Recovery</button>
+                <button class="action-btn">Configuration Settings</button>
             </aside>
 
             <div class="content-display">
@@ -155,6 +157,67 @@
                         <button class="upload-btn hidden" id="usb-boot-image-upload-btn">Upload</button>
                         <button class="upload-btn hidden" id="usb-wic-image-upload-btn">Upload</button>
                     </div>
+                </div>
+
+                <div id="ufs-config-content" class="content-section hidden">
+                    <div class="recovery-header">
+                        <h1>UFS Device Configuration</h1>
+                        <p class="recovery-description">Configure UFS Logical Units (LUs) and device settings</p>
+                    </div>
+
+                    <!-- Device Info Section -->
+                    <div class="ufs-section">
+                        <h2>UFS Device Configuration</h2>
+                        <div class="ufs-config-row" style="margin-bottom: 15px;">
+                            <p class="ufs-info-text" style="font-size: 0.95em; color: #555;">
+                                Click "Query Device" to load current configuration values.
+                                After loading, you can modify values and click "Write Configuration" to apply changes.
+                            </p>
+                        </div>
+                        <div class="ufs-device-info">
+                            <div class="ufs-info-row">
+                                <span class="ufs-label">UFS Device Path:</span>
+                                <input type="text" id="ufs-device-path" class="ufs-input" value="/dev/bsg/ufs-bsg0" />
+                                <button class="ufs-btn ufs-btn-primary" id="ufs-query-btn">Query Device</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LU Configuration Section -->
+                    <div class="ufs-section">
+                        <h2>Logical Unit Configuration</h2>
+                        <div class="ufs-lu-table-container">
+                            <table class="ufs-lu-table">
+                                <thead>
+                                    <tr>
+                                        <th>LU</th>
+                                        <th>Enable</th>
+                                        <th>Size (GB)</th>
+                                        <th>Memory Type</th>
+                                        <th>Boot LUN</th>
+                                        <th>Write Protect</th>
+                                        <th>Alloc Units</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ufs-lu-table-body">
+                                    <!-- LU rows will be dynamically generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="ufs-summary">
+                            <div class="ufs-summary-item">
+                                <span class="ufs-label">Total Allocated:</span>
+                                <span class="ufs-value" id="ufs-total-allocated">0 GB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="ufs-action-container">
+                        <button class="ufs-btn ufs-btn-primary" id="ufs-write-config-btn">Write Configuration to Device</button>
+                    </div>
+
+
                 </div>
             </div>
         </div>
