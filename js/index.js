@@ -7,7 +7,8 @@
 const CONTENT_MAP = {
     'System Information': 'system-info-content',
     'Ethernet Recovery': 'ethernet-recovery-content',
-    'USB Recovery': 'usb-recovery-content'
+    'USB Recovery': 'usb-recovery-content',
+    'Configuration Settings': 'ufs-config-content'
 };
 
 const FIELDS = {
