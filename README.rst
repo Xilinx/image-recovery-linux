@@ -73,7 +73,8 @@ The project structure is organized as follows:
    ├── css/
    │   └── index.css       # Stylesheet
    ├── js/
-   │   └── index.js        # Application logic
+   │   ├── index.js        # Application logic
+   │   └── ufs_config.js   # UFS configuration constants
    ├── cgi-bin/            # CGI scripts for backend operations
    ├── image/              # Images and icons
    └── Makefile            # Installation script
@@ -95,6 +96,53 @@ Follow these steps to use the recovery tool:
 
 .. tip::
    For detailed usage instructions, refer to the Help section in the application.
+
+UFS Configuration
+-----------------
+
+In the GUI, selecting **Query Device** triggers backend script ``cgi-bin/ufs_configure.sh``
+to read the current descriptor from the selected UFS device.
+
+For manual CLI usage, run the following command to query the device and dump the current UFS
+configuration descriptor to a binary file named ``ufsconfig`` (the descriptor is also printed on terminal):
+
+.. code-block:: bash
+
+      ufs-utils desc -t 1 -D ufsconfig -p /dev/bsg/ufs-bsg0
+
+Logical Unit Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The table below summarizes the logical unit setup from the current descriptor values:
+
+.. list-table::
+      :header-rows: 1
+
+      * - Logical Unit
+         - LU Enable
+         - Size
+         - Memory Type
+         - Boot LUN
+         - Write Protect
+         - Alloc Units (dNumAllocUnits)
+      * - LU0
+         - Yes
+         - 20 GB
+         - Normal (0x0)
+         - Boot A (0x1)
+         - None (0x0)
+         - 0x1400
+      * - LU1
+         - Yes
+         - 2-4 GB
+         - Normal (0x0)
+         - Boot B (0x0)
+         - None (0x0)
+         - 0x0100
+
+.. note::
+      After updating/writing UFS logical unit configuration, reboot Linux so the newly
+      configured logical units/partitions are detected.
 
 Uninstallation
 ==============
