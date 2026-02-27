@@ -285,13 +285,6 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		log_info "Build Date: $formatted_date"
 	fi
 else
-	log_error "No boot file provided for flashing"
-	FINAL_STATUS="FAIL"
-	FINAL_MESSAGE="No boot file provided"
-	echo "FLASH_STATUS=FAIL"
-	echo "FLASH_REASON=No boot file provided"
-fi
-else
 	echo "FLASH_STATUS=IDLE"
 	echo "FLASH_REASON=No POST request received"
 fi
