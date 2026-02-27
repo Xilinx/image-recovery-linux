@@ -107,7 +107,7 @@ elif [[ $path =~ ^\.([a-zA-Z0-9_]+)\s*\|\s*length$ ]]; then
 extract_hex_value() {
 	local desc="$1"
 	local field="$2"
-	echo "$desc" | grep -oP "${field}\s*=\s*\K0x[0-9a-f]+" | head -1
+	echo "$desc" | sed -n "s/.*${field}[[:space:]]*=[[:space:]]*\(0x[0-9a-fA-F]*\).*/\1/p" | head -n 1
 }
 
 # Function to escape string for JSON (pure bash implementation)
@@ -275,7 +275,7 @@ query_device() {
 
     # Get UFS version from device descriptor
     local spec_version
-    spec_version=$(echo "$device_desc" | grep -oP 'wSpecVersion\s*=\s*0x\K[0-9a-f]+' | head -1)
+    spec_version=$(echo "$device_desc" | sed -n 's/.*wSpecVersion[[:space:]]*=[[:space:]]*0x\([0-9a-fA-F]*\).*/\1/p' | head -n 1)
     local version_str="Unknown"
     if [ -n "$spec_version" ]; then
 	    local major=$((16#${spec_version:0:2}))
@@ -540,9 +540,9 @@ done
 
     # Capture hex dumps for verification - use debug file since it's guaranteed to exist
     local lu0_hex
-    lu0_hex=$(hexdump -C -s "$lu0_offset" -n 10 "$debug_file" 2>/dev/null | head -1 | cut -d'|' -f1 | cut -c11-)
+    lu0_hex=$(hexdump -C -s "$lu0_offset" -n 10 "$debug_file" 2>/dev/null | head -n 1 | cut -d'|' -f1 | cut -c11-)
     local lu1_hex
-    lu1_hex=$(hexdump -C -s "$lu1_offset" -n 10 "$debug_file" 2>/dev/null | head -1 | cut -d'|' -f1 | cut -c11-)
+    lu1_hex=$(hexdump -C -s "$lu1_offset" -n 10 "$debug_file" 2>/dev/null | head -n 1 | cut -d'|' -f1 | cut -c11-)
 
     log_message "Modified config saved to: $debug_file"
     log_message "LU0 at 0x$(printf '%x' "$lu0_offset"): $lu0_hex"
