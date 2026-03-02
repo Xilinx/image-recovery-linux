@@ -1,0 +1,325 @@
+#!/bin/bash
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
+
+# Main wrapper script for user-space operations
+# Calls cgi-bin scripts and strips HTTP headers
+# Usage: ./image-recovery [options] <command> [arguments...]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CGI_DIR="$SCRIPT_DIR/../cgi-bin"
+SCRIPT_FILE=""
+DEVICE=""
+UFS_CONFIG_FILE=""
+UFS_DEVICE_PATH=""
+PRESERVE_JSON=false  # Flag to preserve JSON output for specific commands
+
+# Function to convert JSON to readable text
+json_to_text() {
+	local json_data="$1"
+
+	# Check if jq is available for better parsing
+	if command -v jq >/dev/null 2>&1; then
+		echo "$json_data" | jq -r 'to_entries | .[] | "\(.key): \(.value)"' 2>/dev/null && return
+	fi
+
+	# Fallback: Basic bash JSON parsing for simple key-value pairs
+	echo "$json_data" | sed -e 's/^[[:space:]]*{[[:space:]]*//; s/[[:space:]]*}[[:space:]]*$//' \
+		-e 's/"//g' \
+		-e 's/,[[:space:]]*/\n/g' \
+		-e 's/:[[:space:]]*/: /g' | \
+		while IFS=: read -r key value; do
+			[ -n "$key" ] && echo "$key: $value"
+		done
+}
+
+# Function to execute a CGI script and convert JSON output to readable text
+run_cgi_script() {
+	local script="$1"
+	shift
+
+	[ -f "$CGI_DIR/$script" ] || {
+		echo "Error: CGI script $script not found" >&2
+		return 1
+	}
+
+	# Capture full output including headers
+	local output
+	output=$(
+		cd "$CGI_DIR" || {
+			echo "Error: Failed to change to CGI directory: $CGI_DIR" >&2
+			exit 1
+		}
+		./"$script" "$@"
+	)
+	local ret=$?
+
+	# Split headers and body
+	local headers body is_json=false
+	headers=$(echo "$output" | sed -n '1,/^$/p')
+	body=$(echo "$output" | sed -n '/^$/,$p' | tail -n +2)
+
+	# Check if output is JSON
+	if echo "$headers" | grep -qi "Content-type:.*application/json"; then
+		is_json=true
+	fi
+
+	# Convert JSON to readable text (unless PRESERVE_JSON flag is set), or pass through as-is
+	if [ "$is_json" = true ] && [ -n "$body" ] && [ "$PRESERVE_JSON" != true ]; then
+		json_to_text "$body"
+	else
+		echo "$output"
+	fi
+
+	return $ret
+}
+
+# Function to validate arguments
+validate_args() {
+	# Check if command is provided
+	if [ -z "$SCRIPT_FILE" ]; then
+		show_usage
+	fi
+	# Check if DEVICE is required for upload-wic
+	if [ "$SCRIPT_FILE" = "upload_wicimage.sh" ] && [ -z "$DEVICE" ]; then
+		echo "Error: --device argument is required when using --upload-wic"
+		echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0"
+		exit 1
+	fi
+	# Check if --bmap is only used with --upload-wic
+	if [ -n "$BMAP_FILE" ] && [ "$SCRIPT_FILE" != "upload_wicimage.sh" ]; then
+		echo "Error: --bmap can only be used with --upload-wic"
+		echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap"
+		exit 1
+	fi
+}
+
+# Function to execute the selected command
+execute_command() {
+	case "$SCRIPT_FILE" in
+	"upload_bootbin.sh")
+		# For upload_bootbin, we need to handle the file path argument
+		export REQUEST_METHOD="POST"
+		export HTTP_X_UPLOAD_TYPE="usb-path"
+		export HTTP_X_FILENAME=""
+		# Send file path to stdin
+		run_cgi_script "$SCRIPT_FILE" <<< "$BOOTBIN_PATH" || exit $?
+
+		# Trigger the flash command
+		export HTTP_X_UPLOAD_TYPE="flash"
+		export CONTENT_TYPE="text/plain"
+		# Send FLASH command to stdin
+		run_cgi_script "$SCRIPT_FILE" <<< "FLASH" || exit $?
+		;;
+	"upload_wicimage.sh")
+		# For upload_wicimage, use a two-step process:
+		# Step 1: Send USB file paths (main file and optional bmap)
+		export REQUEST_METHOD="POST"
+		export HTTP_X_UPLOAD_TYPE="usb-paths"
+
+		# Send file paths to stdin (main file, then bmap file if exists)
+		if [ -n "$BMAP_FILE" ]; then
+			run_cgi_script "$SCRIPT_FILE" <<< "$WIC_PATH"$'\n'"$BMAP_FILE" || exit $?
+		else
+			run_cgi_script "$SCRIPT_FILE" <<< "$WIC_PATH"$'\n' || exit $?
+		fi
+
+		# Step 2: Trigger the flash operation
+		export HTTP_X_UPLOAD_TYPE="flash"
+		export HTTP_X_TARGET_DEVICE="$DEVICE"
+		run_cgi_script "$SCRIPT_FILE" || exit $?
+		;;
+	"ufs_query")
+		# Query UFS configuration - keep JSON format for pipeline/file output
+		PRESERVE_JSON=true
+		export REQUEST_METHOD="GET"
+		if [ -n "$UFS_DEVICE_PATH" ]; then
+			export QUERY_STRING="device=$UFS_DEVICE_PATH"
+		fi
+		run_cgi_script "ufs_configure.sh" || exit $?
+		;;
+	"ufs_write")
+		# Write UFS configuration
+		export REQUEST_METHOD="POST"
+		run_cgi_script "ufs_configure.sh" < "$UFS_CONFIG_FILE" || exit $?
+		;;
+	*)
+		run_cgi_script "$SCRIPT_FILE" "$@"
+		;;
+	esac
+}
+
+# Function to show usage
+show_usage() {
+	cat <<EOF
+User-Space Image Recovery Tool
+
+Usage: $0 [options]
+
+Options:
+	-h, --help              Show this help message
+	--cgi-dir DIR           Override CGI directory path
+
+Command Options:
+	--sysinfo               Get system information from EEPROM
+	--bootstatus            Get boot status and version information
+	--scan-usb              Scan for USB storage devices
+	--upload-bootbin PATH   Flash the selected boot binary to qspi/ospi
+	--upload-wic PATH       Upload WIC image to storage device
+	--device DEVICE         Specify target device (required with --upload-wic)
+	--bmap PATH             Specify bmap file (only with --upload-wic)
+	--ufs-query [DEVICE]    Query current UFS configuration (optional device path)
+	--ufs-write CONFIG      Write UFS configuration from JSON file
+
+Examples:
+	$0 --sysinfo
+	$0 --bootstatus
+	$0 --scan-usb
+	$0 --upload-bootbin /path/to/BOOT.BIN
+	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0
+	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap
+	$0 --ufs-query
+	$0 --ufs-query /dev/bsg/ufs-bsg1
+	$0 --ufs-write /path/to/ufs-config.json
+	$0 --cgi-dir /custom/cgi/path --sysinfo
+
+UFS Configuration Workflow:
+	1. Query current configuration (outputs JSON):
+	   $0 --ufs-query > current-config.json
+
+	2. Edit the JSON file (current-config.json):
+	   - Modify device path if needed
+	   - Configure LU0-LU7 parameters
+
+	3. Apply modified configuration:
+	   $0 --ufs-write current-config.json
+
+	Configuration Parameters:
+	   bLUEnable       - 0x0=Disabled, 0x1=Enabled
+	   bBootLunID      - 0x0=None, 0x1=Boot A, 0x2=Boot B
+	   bLUWriteProtect - 0x0=None, 0x1=Power On WP, 0x2=Permanent WP
+	   bMemoryType     - 0x0=Normal, 0x3-0x6=Enhanced 1-4
+	   dNumAllocUnits  - Allocation unit count (device-dependent)
+
+	Note: Changes require system reboot. Ensure LU0 is enabled as Boot A.
+EOF
+	exit 0
+}
+
+# Function to parse command line arguments
+parseargs() {
+	# Check for help flag first - it should always take precedence
+	for arg in "$@"; do
+		if [ "$arg" = "-h" ] || [ "$arg" = "--help" ]; then
+			show_usage
+		fi
+	done
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			--cgi-dir)
+				CGI_DIR="$2"
+				shift 2
+				;;
+			--sysinfo)
+				SCRIPT_FILE="sysinfo_eeprom.sh"
+				shift
+				;;
+			--bootstatus)
+				SCRIPT_FILE="bootstatus.sh"
+				shift
+				;;
+			--scan-usb)
+				SCRIPT_FILE="scan_usbdev.sh"
+				shift
+				;;
+			--upload-bootbin)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --upload-bootbin requires a file path argument"
+					echo "Usage: $0 --upload-bootbin /path/to/BOOT.BIN"
+					exit 1
+				fi
+				SCRIPT_FILE="upload_bootbin.sh"
+				BOOTBIN_PATH="$2"
+				if [ ! -f "$BOOTBIN_PATH" ]; then
+					echo "Error: File $BOOTBIN_PATH not found"
+					exit 1
+				fi
+				BOOTBIN_PATH=$(readlink -f "$BOOTBIN_PATH")
+				shift 2
+				;;
+			--upload-wic)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --upload-wic requires an image file path argument"
+					echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0"
+					exit 1
+				fi
+				SCRIPT_FILE="upload_wicimage.sh"
+				WIC_PATH="$2"
+				if [ ! -f "$WIC_PATH" ]; then
+					echo "Error: File $WIC_PATH not found"
+					exit 1
+				fi
+				WIC_PATH=$(readlink -f "$WIC_PATH")
+				shift 2
+				;;
+			--device)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --device requires a device path argument"
+					echo "Usage: $0 --device /dev/mmcblk0"
+					exit 1
+				fi
+				DEVICE="$2"
+				shift 2
+				;;
+			--bmap)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --bmap requires a bmap file path argument"
+					echo "Usage: $0 --bmap /path/to/file.bmap"
+					exit 1
+				fi
+				BMAP_FILE="$2"
+				if [ ! -f "$BMAP_FILE" ]; then
+					echo "Error: File $BMAP_FILE not found"
+					exit 1
+				fi
+				BMAP_FILE=$(readlink -f "$BMAP_FILE")
+				shift 2
+				;;
+			--ufs-query)
+				SCRIPT_FILE="ufs_query"
+				if [ -n "$2" ] && [[ "$2" != -* ]]; then
+					UFS_DEVICE_PATH="$2"
+					shift 2
+				else
+					shift
+				fi
+				;;
+			--ufs-write)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --ufs-write requires a JSON configuration file path"
+					echo "Usage: $0 --ufs-write /path/to/config.json"
+					exit 1
+				fi
+				SCRIPT_FILE="ufs_write"
+				UFS_CONFIG_FILE="$2"
+				if [ ! -f "$UFS_CONFIG_FILE" ]; then
+					echo "Error: Config file $UFS_CONFIG_FILE not found"
+					exit 1
+				fi
+				UFS_CONFIG_FILE=$(readlink -f "$UFS_CONFIG_FILE")
+				shift 2
+				;;
+			*)
+				echo "Unknown option: $1"
+				echo "Run '$0 --help' for usage information"
+				exit 1
+				;;
+		esac
+	done
+}
+
+# Parse command line arguments
+parseargs "$@"
+validate_args
+execute_command
