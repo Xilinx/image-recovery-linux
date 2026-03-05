@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
@@ -13,6 +13,9 @@ DEVICE=""
 UFS_CONFIG_FILE=""
 UFS_DEVICE_PATH=""
 PRESERVE_JSON=false  # Flag to preserve JSON output for specific commands
+BOOTBIN_PATH=""
+WIC_PATH=""
+BMAP_FILE=""
 
 # Function to convert JSON to readable text
 json_to_text() {
@@ -121,7 +124,7 @@ execute_command() {
 		if [ -n "$BMAP_FILE" ]; then
 			run_cgi_script "$SCRIPT_FILE" <<< "$WIC_PATH"$'\n'"$BMAP_FILE" || exit $?
 		else
-			run_cgi_script "$SCRIPT_FILE" <<< "$WIC_PATH"$'\n' || exit $?
+			run_cgi_script "$SCRIPT_FILE" <<< "$WIC_PATH" || exit $?
 		fi
 
 		# Step 2: Trigger the flash operation
@@ -134,7 +137,9 @@ execute_command() {
 		PRESERVE_JSON=true
 		export REQUEST_METHOD="GET"
 		if [ -n "$UFS_DEVICE_PATH" ]; then
-			export QUERY_STRING="device=$UFS_DEVICE_PATH"
+			local encoded_device
+			encoded_device=$(printf '%s' "$UFS_DEVICE_PATH" | sed 's/%/%25/g; s/ /%20/g; s/&/%26/g; s/=/%3D/g; s/?/%3F/g; s/#/%23/g; s/+/%2B/g')
+			export QUERY_STRING="device=$encoded_device"
 		fi
 		run_cgi_script "ufs_configure.sh" || exit $?
 		;;
@@ -144,7 +149,7 @@ execute_command() {
 		run_cgi_script "ufs_configure.sh" < "$UFS_CONFIG_FILE" || exit $?
 		;;
 	*)
-		run_cgi_script "$SCRIPT_FILE" "$@"
+		run_cgi_script "$SCRIPT_FILE"
 		;;
 	esac
 }
