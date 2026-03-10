@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CGI_DIR="$SCRIPT_DIR/../cgi-bin"
 SCRIPT_FILE=""
 DEVICE=""
-UFS_CONFIG_FILE=""
 UFS_DEVICE_PATH=""
+UFS_CONFIG_FILE=""
 PRESERVE_JSON=false  # Flag to preserve JSON output for specific commands
 BOOTBIN_PATH=""
 WIC_PATH=""
@@ -132,21 +132,49 @@ execute_command() {
 		export HTTP_X_TARGET_DEVICE="$DEVICE"
 		run_cgi_script "$SCRIPT_FILE" || exit $?
 		;;
-	"ufs_query")
-		# Query UFS configuration - keep JSON format for pipeline/file output
-		PRESERVE_JSON=true
+	"ufs_dump")
+		# Query UFS configuration via ufs_configure.sh and persist JSON body only
+		local device="${UFS_DEVICE_PATH:-/dev/bsg/ufs-bsg0}"
+		echo "Querying UFS device: $device"
+		echo "Saving configuration JSON to: $UFS_CONFIG_FILE"
+		echo ""
+
 		export REQUEST_METHOD="GET"
-		if [ -n "$UFS_DEVICE_PATH" ]; then
-			local encoded_device
-			encoded_device=$(printf '%s' "$UFS_DEVICE_PATH" | sed 's/%/%25/g; s/ /%20/g; s/&/%26/g; s/=/%3D/g; s/?/%3F/g; s/#/%23/g; s/+/%2B/g')
-			export QUERY_STRING="device=$encoded_device"
+		export QUERY_STRING="device=$device"
+		PRESERVE_JSON=true
+		if ! run_cgi_script "ufs_configure.sh" > "$UFS_CONFIG_FILE"; then
+			echo "Error: Failed to query UFS configuration"
+			PRESERVE_JSON=false
+			exit 1
 		fi
-		run_cgi_script "ufs_configure.sh" || exit $?
+		PRESERVE_JSON=false
+
+		echo "SUCCESS: UFS configuration JSON saved to $UFS_CONFIG_FILE"
+		echo "Next steps:"
+		echo "  1. Review configuration: cat $UFS_CONFIG_FILE"
+		echo "  2. Edit if needed"
+		echo "  3. Write back: image-recovery --cgi-dir /var/imgrcry_web/cgi-bin --ufs-write-binary $UFS_CONFIG_FILE"
+		echo "  4. Reboot system"
 		;;
-	"ufs_write")
-		# Write UFS configuration
+	"ufs_write_binary")
+		# Write UFS configuration via ufs_configure.sh using JSON payload
+		local device="${UFS_DEVICE_PATH:-/dev/bsg/ufs-bsg0}"
+		if [ ! -f "$UFS_CONFIG_FILE" ]; then
+			echo "Error: Configuration file $UFS_CONFIG_FILE not found"
+			exit 1
+		fi
+
+		echo "Writing UFS configuration from $UFS_CONFIG_FILE to $device..."
+		echo "WARNING: This will modify the UFS device configuration!"
+
 		export REQUEST_METHOD="POST"
-		run_cgi_script "ufs_configure.sh" < "$UFS_CONFIG_FILE" || exit $?
+		export CONTENT_TYPE="application/json"
+		if ! cat "$UFS_CONFIG_FILE" | run_cgi_script "ufs_configure.sh"; then
+			echo "Error: Failed to write UFS configuration"
+			exit 1
+		fi
+
+		echo "IMPORTANT: Reboot the system for the UFS configuration changes."
 		;;
 	*)
 		run_cgi_script "$SCRIPT_FILE"
@@ -173,8 +201,8 @@ Command Options:
 	--upload-wic PATH       Upload WIC image to storage device
 	--device DEVICE         Specify target device (required with --upload-wic)
 	--bmap PATH             Specify bmap file (only with --upload-wic)
-	--ufs-query [DEVICE]    Query current UFS configuration (optional device path)
-	--ufs-write CONFIG      Write UFS configuration from JSON file
+	--ufs-dump FILE [DEVICE]  Query UFS config and save JSON to FILE
+	--ufs-write-binary FILE [DEVICE]  Write UFS configuration from JSON FILE to device
 
 Examples:
 	$0 --sysinfo
@@ -183,30 +211,38 @@ Examples:
 	$0 --upload-bootbin /path/to/BOOT.BIN
 	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0
 	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap
-	$0 --ufs-query
-	$0 --ufs-query /dev/bsg/ufs-bsg1
-	$0 --ufs-write /path/to/ufs-config.json
+	$0 --cgi-dir /custom/cgi/path --ufs-dump ufsconfig
+	$0 --cgi-dir /custom/cgi/path --ufs-write-binary ufsconfig
 	$0 --cgi-dir /custom/cgi/path --sysinfo
 
-UFS Configuration Workflow:
-	1. Query current configuration (outputs JSON):
-	   $0 --ufs-query > current-config.json
+UFS Configuration Workflow :
+	1. Query and dump binary configuration:
+	   $0 --cgi-dir /var/imgrcry_web/cgi-bin --ufs-dump ufsconfig
+	   (Displays current config + saves to a file)
 
-	2. Edit the JSON file (current-config.json):
+	2. Review the output and edit the JSON file if needed:
 	   - Modify device path if needed
 	   - Configure LU0-LU7 parameters
 
-	3. Apply modified configuration:
-	   $0 --ufs-write current-config.json
+	3. Write modified configuration back to device:
+	   $0 --cgi-dir /var/imgrcry_web/cgi-bin --ufs-write-binary ufsconfig
 
-	Configuration Parameters:
-	   bLUEnable       - 0x0=Disabled, 0x1=Enabled
-	   bBootLunID      - 0x0=None, 0x1=Boot A, 0x2=Boot B
-	   bLUWriteProtect - 0x0=None, 0x1=Power On WP, 0x2=Permanent WP
-	   bMemoryType     - 0x0=Normal, 0x3-0x6=Enhanced 1-4
-	   dNumAllocUnits  - Allocation unit count (device-dependent)
+	4. Reboot system
 
-	Note: Changes require system reboot. Ensure LU0 is enabled as Boot A.
+	Key Configuration Offsets:
+
+	LU0 (Primary boot, starts at offset 0x16):
+	   0x16: bLUEnable        (0x00=Disabled, 0x01=Enabled)
+	   0x17: bBootLunID       (0x00=None, 0x01=Boot A, 0x02=Boot B)
+	   0x1A: dNumAllocUnits   (4 bytes, big endian - size in allocation units)
+
+	Other LUs: LU1@0x30, LU2@0x4A, LU3@0x64, LU4@0x7E, LU5@0x98, LU6@0xB2, LU7@0xCC
+
+	Example - Configure LU0 as 1GB Boot A:
+	   Allocation units: 1GB ÷ 8KB = 131,072 (0x20000)
+	   Edit: 0x16=01, 0x17=01, 0x1A-0x1D=00 02 00 00
+
+	Note: All multi-byte values are big endian. Reboot required after changes.
 EOF
 	exit 0
 }
@@ -291,29 +327,42 @@ parseargs() {
 				BMAP_FILE=$(readlink -f "$BMAP_FILE")
 				shift 2
 				;;
-			--ufs-query)
-				SCRIPT_FILE="ufs_query"
-				if [ -n "$2" ] && [[ "$2" != -* ]]; then
-					UFS_DEVICE_PATH="$2"
-					shift 2
-				else
+			--ufs-dump)
+				if [ -z "$2" ] || [[ "$2" == -* ]]; then
+					echo "Error: --ufs-dump requires a file path argument"
+					echo "Usage: $0 --ufs-dump ufsconfig [/dev/bsg/ufs-bsg0]"
+					exit 1
+				fi
+				SCRIPT_FILE="ufs_dump"
+				UFS_CONFIG_FILE="$2"
+				# Don't check if file exists - we're creating it
+				UFS_CONFIG_FILE=$(readlink -f "$UFS_CONFIG_FILE" 2>/dev/null || echo "$2")
+				shift 2
+				# Check for optional device path
+				if [ -n "$1" ] && [[ "$1" != -* ]]; then
+					UFS_DEVICE_PATH="$1"
 					shift
 				fi
 				;;
-			--ufs-write)
+			--ufs-write-binary)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
-					echo "Error: --ufs-write requires a JSON configuration file path"
-					echo "Usage: $0 --ufs-write /path/to/config.json"
+					echo "Error: --ufs-write-binary requires a file path argument"
+					echo "Usage: $0 --ufs-write-binary ufsconfig [/dev/bsg/ufs-bsg0]"
 					exit 1
 				fi
-				SCRIPT_FILE="ufs_write"
+				SCRIPT_FILE="ufs_write_binary"
 				UFS_CONFIG_FILE="$2"
 				if [ ! -f "$UFS_CONFIG_FILE" ]; then
-					echo "Error: Config file $UFS_CONFIG_FILE not found"
+					echo "Error: Binary config file $UFS_CONFIG_FILE not found"
 					exit 1
 				fi
 				UFS_CONFIG_FILE=$(readlink -f "$UFS_CONFIG_FILE")
 				shift 2
+				# Check for optional device path
+				if [ -n "$1" ] && [[ "$1" != -* ]]; then
+					UFS_DEVICE_PATH="$1"
+					shift
+				fi
 				;;
 			*)
 				echo "Unknown option: $1"
