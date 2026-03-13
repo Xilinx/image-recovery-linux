@@ -64,8 +64,8 @@ fi
 
 # Determine boot device paths based on active bank
 case "$active_bank_num" in
-	0) boot_dev_active="/dev/mtd9"; boot_dev_prev="/dev/mtd12" ;;
-	1) boot_dev_active="/dev/mtd12"; boot_dev_prev="/dev/mtd9" ;;
+	0) boot_dev_active="/dev/mtd10"; boot_dev_prev="/dev/mtd13" ;;
+	1) boot_dev_active="/dev/mtd13"; boot_dev_prev="/dev/mtd10" ;;
 	*) boot_dev_active=""; boot_dev_prev="" ;;
 esac
 

@@ -160,14 +160,14 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 	log_info "Starting flash operation - File: $file_path"
 	# Determine flash target based on active bank
 	if [ "$active_bank" = "0" ]; then
-		target_mtd="/dev/mtd12"
+		target_mtd="/dev/mtd13"
 		target_name="IMAGE B"
 		new_active="\x01"
 		new_prev="\x00"
 		seek_pos=25
 		log_info "Flashing to inactive bank B (will become active)"
 	else
-		target_mtd="/dev/mtd9"
+		target_mtd="/dev/mtd10"
 		target_name="IMAGE A"
 		new_active="\x00"
 		new_prev="\x01"
