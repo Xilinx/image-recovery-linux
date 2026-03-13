@@ -69,10 +69,11 @@ parse_json() {
     if [[ $path =~ ^\.([a-zA-Z0-9_]+)$ ]]; then
 	    local field="${BASH_REMATCH[1]}"
 	    echo "$data" | sed -n 's/.*"'"$field"'":\s*"\([^"]*\)".*/\1/p'
-	    # Handle array[index].field
-    elif [[ $path =~ ^\.([a-zA-Z0-9_]+)\[([0-9]+)\]\.([a-zA-Z0-9_]+)$ ]]; then
-	    local idx="${BASH_REMATCH[2]}"
-	    local field="${BASH_REMATCH[3]}"
+
+	# Handle .luns[index].field format
+    elif [[ $path =~ ^\.luns\[([0-9]+)\]\.([a-zA-Z0-9_]+)$ ]]; then
+	    local idx="${BASH_REMATCH[1]}"
+	    local field="${BASH_REMATCH[2]}"
 
 	# Use awk to extract the specific array element and field
 	echo "$data" | awk -F'[{}]' -v idx="$idx" -v field="$field" '
@@ -97,9 +98,10 @@ parse_json() {
 			}
 		}
 	}'
-	# Handle array length
-elif [[ $path =~ ^\.([a-zA-Z0-9_]+)\s*\|\s*length$ ]]; then
-	echo "8"
+
+	# Handle .luns | length
+	elif [[ $path =~ ^\.luns\s*\|\s*length$ ]]; then
+	    echo "8"
     fi
 }
 
@@ -289,7 +291,7 @@ query_device() {
     local boot_lun_id
     boot_lun_id=$(extract_hex_value "$device_desc" "bBootLunID")
 
-    # Parse geometry descriptor (keep as hex strings)
+    # Parse geometry descriptor for metadata
     local segment_size
     segment_size=$(extract_hex_value "$geometry_desc" "dSegmentSize")
     local alloc_unit_size
@@ -297,14 +299,29 @@ query_device() {
     local total_capacity
     total_capacity=$(extract_hex_value "$geometry_desc" "qTotalRawDeviceCapacity")
 
-    # Build config object with LU0-LU7 structure
-    local config_json="{"
-    config_json="$config_json\"bBootEnable\":\"${boot_enable:-0x0}\","
-    config_json="$config_json\"bBootLunID\":\"${boot_lun_id:-0x0}\","
+    # Helper function to convert hex to decimal
+    # Handles: 0x1 -> 1, 0x1400 -> 5120, "51200" -> 51200, "" -> 0
+    # Used to convert device descriptor hex values to JSON-friendly decimal numbers
+    hex_to_dec() {
+        local hex="$1"
+        # Remove any whitespace
+        hex=$(echo "$hex" | tr -d '[:space:]')
+        if [[ $hex =~ ^0x([0-9a-fA-F]+)$ ]]; then
+            # Convert hex (0xABC) to decimal
+            echo $((16#${BASH_REMATCH[1]}))
+        elif [[ $hex =~ ^([0-9]+)$ ]]; then
+            # Already decimal, return as-is
+            echo "$hex"
+        else
+            # Invalid or empty, default to 0
+            echo "0"
+        fi
+    }
 
-    # Parse LUN configurations and build LU0-LU7 objects
+    # Build luns array (GUI-compatible format)
+    local luns_json="["
     for lu in {0..7}; do
-	    # Extract LU descriptor section (remove arbitrary limit)
+	    # Extract LU descriptor section
 	    local lu_section
 	    lu_section=$(echo "$config_desc" | sed -n "/Config $lu Unit Descriptor:/,/Config $((lu+1)) Unit Descriptor:/p")
 
@@ -312,33 +329,70 @@ query_device() {
 		    log_message "Warning: No data found for LU$lu"
 	    fi
 
-	    local lu_enable
-	    lu_enable=$(extract_hex_value "$lu_section" "bLUEnable")
-	    local lu_boot_id
-	    lu_boot_id=$(extract_hex_value "$lu_section" "bBootLunID")
-	    local num_alloc
-	    num_alloc=$(extract_hex_value "$lu_section" "dNumAllocUnits")
-	    local mem_type
-	    mem_type=$(extract_hex_value "$lu_section" "bMemoryType")
-	    local write_protect
-	    write_protect=$(extract_hex_value "$lu_section" "bLUWriteProtect")
+	    # Extract hex values
+	    local lu_enable_hex
+	    lu_enable_hex=$(extract_hex_value "$lu_section" "bLUEnable")
+	    local lu_boot_id_hex
+	    lu_boot_id_hex=$(extract_hex_value "$lu_section" "bBootLunID")
+	    local num_alloc_hex
+	    num_alloc_hex=$(extract_hex_value "$lu_section" "dNumAllocUnits")
+	    local mem_type_hex
+	    mem_type_hex=$(extract_hex_value "$lu_section" "bMemoryType")
+	    local write_protect_hex
+	    write_protect_hex=$(extract_hex_value "$lu_section" "bLUWriteProtect")
 
-	# Add LU object to config
-	config_json="$config_json\"LU$lu\":{"
-	config_json="$config_json\"bLUEnable\":\"${lu_enable:-0x0}\","
-	config_json="$config_json\"bBootLunID\":\"${lu_boot_id:-0x0}\","
-	config_json="$config_json\"dNumAllocUnits\":\"${num_alloc:-0x0}\","
-	config_json="$config_json\"bMemoryType\":\"${mem_type:-0x0}\","
-	config_json="$config_json\"bLUWriteProtect\":\"${write_protect:-0x0}\""
-	config_json="$config_json},"
-done
-config_json="${config_json%,}}"  # Remove trailing comma
+	    # Convert to decimal
+	    local lu_enable_dec=$(hex_to_dec "$lu_enable_hex")
+	    local lu_boot_id_dec=$(hex_to_dec "$lu_boot_id_hex")
+	    local num_alloc_dec=$(hex_to_dec "$num_alloc_hex")
+	    local mem_type_dec=$(hex_to_dec "$mem_type_hex")
+	    local write_protect_dec=$(hex_to_dec "$write_protect_hex")
 
-    # Build geometry object (hex strings)
+	    # Ensure we have valid numbers (default to 0 if empty)
+	    lu_enable_dec=${lu_enable_dec:-0}
+	    lu_boot_id_dec=${lu_boot_id_dec:-0}
+	    num_alloc_dec=${num_alloc_dec:-0}
+	    mem_type_dec=${mem_type_dec:-0}
+	    write_protect_dec=${write_protect_dec:-0}
+
+	    # Debug log the conversions (hex -> decimal)
+	    # enable: 0x0=Disabled, 0x1=Enabled
+	    # boot: 0x0=None, 0x1=Boot A, 0x2=Boot B
+	    # alloc: Number of allocation units (size = alloc_units × segment_size)
+	    # Example: LU0: enable=0x1->1, boot=0x1->1, alloc=0x1400->5120
+	    #          means: Enabled, Boot A, 5120 allocation units
+	    log_message "LU$lu: enable=$lu_enable_hex->$lu_enable_dec, boot=$lu_boot_id_hex->$lu_boot_id_dec, alloc=$num_alloc_hex->$num_alloc_dec"
+
+	    # Convert enabled to boolean for JSON output
+	    local enabled_bool="false"
+	    [ "$lu_enable_dec" -eq 1 ] 2>/dev/null && enabled_bool="true"
+
+	    # Add LUN object to array (ensure numeric values, not hex strings)
+	    # enabled: true=LU active, false=LU disabled
+	    # bootLunId: 0=None, 1=Boot A, 2=Boot B
+	    # allocUnits: Size in allocation units (actual size = allocUnits × segmentSize)
+	    # memoryType: 0=Normal, 3-6=Enhanced memory types 1-4
+	    # writeProtect: 0=None, 1=Power-on WP, 2=Permanent WP
+	    luns_json="$luns_json{"
+	    luns_json="$luns_json\"enabled\":$enabled_bool,"
+	    luns_json="$luns_json\"bootLunId\":${lu_boot_id_dec},"
+	    luns_json="$luns_json\"allocUnits\":${num_alloc_dec},"
+	    luns_json="$luns_json\"memoryType\":${mem_type_dec},"
+	    luns_json="$luns_json\"writeProtect\":${write_protect_dec}"
+	    luns_json="$luns_json},"
+    done
+    luns_json="${luns_json%,}]"  # Remove trailing comma and close array
+
+    # Build geometry object (convert to decimal for consistency)
+    # totalRawDeviceCapacity: Total device capacity in 512-byte units
+    # segmentSize: Size of allocation unit in bytes (typically 4KB-8KB)
+    # allocationUnitSize: Multiplier for segment size (usually 1)
+    # Formula: max_capacity = totalRawDeviceCapacity × 512 bytes
+    #         allocation_unit_bytes = segmentSize × allocationUnitSize
     local geometry_json="{"
-    geometry_json="$geometry_json\"qTotalRawDeviceCapacity\":\"${total_capacity:-0x0}\","
-    geometry_json="$geometry_json\"dSegmentSize\":\"${segment_size:-0x2000}\","
-    geometry_json="$geometry_json\"bAllocationUnitSize\":\"${alloc_unit_size:-0x1}\""
+    geometry_json="$geometry_json\"totalRawDeviceCapacity\":$(hex_to_dec \"$total_capacity\"),"
+    geometry_json="$geometry_json\"segmentSize\":$(hex_to_dec \"$segment_size\"),"
+    geometry_json="$geometry_json\"allocationUnitSize\":$(hex_to_dec \"$alloc_unit_size\")"
     geometry_json="$geometry_json}"
 
     # Escape raw output for JSON (pure bash implementation)
@@ -347,13 +401,13 @@ config_json="${config_json%,}}"  # Remove trailing comma
     local geom_raw
     geom_raw=$(escape_json_string "$geometry_desc")
 
-    # Build final JSON response matching ufs_query.sh format
+    # Build final JSON response with luns array (GUI-compatible format)
     cat <<EOF
 {
   "status": "success",
   "device": "$UFS_DEVICE",
   "version": "$version_str",
-  "config": $config_json,
+  "luns": $luns_json,
   "geometry": $geometry_json,
   "raw_config": $config_raw,
   "raw_geometry": $geom_raw
@@ -462,16 +516,37 @@ main() {
 	    local write_protect
 	    local memory_type
 
+	    # Parse from .luns array
 	    enabled=$(parse_json ".luns[$i].enabled")
 	    alloc_units=$(parse_json ".luns[$i].allocUnits")
 	    boot_lun_id=$(parse_json ".luns[$i].bootLunId")
 	    write_protect=$(parse_json ".luns[$i].writeProtect")
 	    memory_type=$(parse_json ".luns[$i].memoryType")
 
+	    # Convert hex values to decimal if needed (in case of malformed JSON with 0x prefixes)
+	    # This ensures backward compatibility if JSON contains hex strings instead of numbers
+	    # Example: "bootLunId":0x1 -> bootLunId=1
+	    if [[ $boot_lun_id =~ ^0x ]]; then
+		boot_lun_id=$((16#${boot_lun_id#0x}))
+	    fi
+	    if [[ $alloc_units =~ ^0x ]]; then
+		alloc_units=$((16#${alloc_units#0x}))
+	    fi
+	    if [[ $write_protect =~ ^0x ]]; then
+		write_protect=$((16#${write_protect#0x}))
+	    fi
+	    if [[ $memory_type =~ ^0x ]]; then
+		memory_type=$((16#${memory_type#0x}))
+	    fi
+
 	    log_message "LU$i raw parsed: enabled='$enabled' alloc='$alloc_units' boot='$boot_lun_id'"
 
-	# Convert boolean to 0/1
-	[ "$enabled" = "true" ] && enabled=1 || enabled=0
+	# Convert boolean to 0/1, or keep numeric value
+	if [ "$enabled" = "true" ] || [ "$enabled" = "1" ]; then
+		enabled=1
+	else
+		enabled=0
+	fi
 
 	log_message "LU$i after conversion: enabled=$enabled alloc=$alloc_units"
 
