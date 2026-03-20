@@ -100,6 +100,9 @@ validate_args() {
 # Function to execute the selected command
 execute_command() {
 	case "$SCRIPT_FILE" in
+	"version.sh")
+		run_cgi_script "$SCRIPT_FILE"
+		;;
 	"upload_bootbin.sh")
 		# For upload_bootbin, we need to handle the file path argument
 		export REQUEST_METHOD="POST"
@@ -195,6 +198,7 @@ Options:
 Command Options:
 	--sysinfo               Get system information from EEPROM
 	--bootstatus            Get boot status and version information
+	--version               Get version information (image-recovery, image-selector, and active bank)
 	--scan-usb              Scan for USB storage devices
 	--upload-bootbin PATH   Flash the selected boot binary to qspi/ospi
 	--upload-wic PATH       Upload WIC image to storage device
@@ -206,6 +210,7 @@ Command Options:
 Examples:
 	$0 --sysinfo
 	$0 --bootstatus
+	$0 --version
 	$0 --scan-usb
 	$0 --upload-bootbin /path/to/BOOT.BIN
 	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0
@@ -265,6 +270,10 @@ parseargs() {
 				;;
 			--bootstatus)
 				SCRIPT_FILE="bootstatus.sh"
+				shift
+				;;
+			--version)
+				SCRIPT_FILE="version.sh"
 				shift
 				;;
 			--scan-usb)
