@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+# SPDX-License-Identifier: MIT
+
+"""AMD System Boot Image Recovery Tool"""
+
+import argparse
+import sys
+from image_recovery_cli import commands, utils
+
+
+def main():
+    """Main entry point with argparse subparsers."""
+    # Check root privileges
+    if not utils.check_root_privileges():
+        print("Error: This tool requires root privileges.", file=sys.stderr)
+        print("Please run with: sudo image-recovery-cli", file=sys.stderr)
+        return 1
+
+    parser = argparse.ArgumentParser(
+        prog='image-recovery-cli',
+        description='AMD System Boot Image Recovery Tool'
+    )
+
+    # Create subparsers
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Setup command parsers
+    commands.version.setup_parser(subparsers)
+    commands.bootstatus.setup_parser(subparsers)
+    commands.upload_boot.setup_parser(subparsers)
+    commands.ufs_config.setup_parser(subparsers)
+    commands.switch_bank.setup_parser(subparsers)
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    return args.func(args)
+
+
+if __name__ == '__main__':
+    try:
+        ret = main()
+    except KeyboardInterrupt:
+        print("\nInterrupted by user", file=sys.stderr)
+        sys.exit(130)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(ret)

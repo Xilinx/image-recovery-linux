@@ -4,10 +4,10 @@
 
 # Main wrapper script for user-space operations
 # Calls cgi-bin scripts and strips HTTP headers
-# Usage: ./image-recovery [options] <command> [arguments...]
+# Usage: ./image-recovery-web [options] <command> [arguments...]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CGI_DIR="$SCRIPT_DIR/../cgi-bin"
+CGI_DIR="$SCRIPT_DIR/../web/cgi-bin"
 SCRIPT_FILE=""
 DEVICE=""
 UFS_DEVICE_PATH=""
@@ -151,7 +151,7 @@ execute_command() {
 			echo "Next steps:"
 			echo "  1. Review configuration: cat $UFS_CONFIG_FILE"
 			echo "  2. Edit if needed"
-			echo "  3. Write back: image-recovery  --ufs-write $UFS_CONFIG_FILE"
+			echo "  3. Write back: image-recovery-web --ufs-write $UFS_CONFIG_FILE"
 			echo "  4. Reboot system"
 		else
 			echo "Error: Failed to query UFS configuration"
