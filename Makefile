@@ -1,25 +1,42 @@
-# Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+# Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
 localstatedir ?= /var
 bindir ?= /usr/bin
-APPSDIR = apps
+pythondir ?= /usr/lib/python3/site-packages
+BINDIR = bin
+WEBDIR = web
 IMGRCVRYDIR = $(localstatedir)/imgrcry_web
 CGIDIR = $(IMGRCVRYDIR)/cgi-bin
 
-INSTALLFILES := help.html index.html cgi-bin css image js
+INSTALLFILES := $(WEBDIR)/help.html $(WEBDIR)/index.html $(WEBDIR)/cgi-bin $(WEBDIR)/css $(WEBDIR)/images $(WEBDIR)/js
 
-.PHONY: install clean
+.PHONY: install clean install-python install-web
 
-install:
-	@echo "Installing files..."
+install: install-web
+
+install-python:
+	@echo "Installing Python utility..."
+	@if command -v pip3 >/dev/null 2>&1; then \
+		echo "Using pip for installation..."; \
+		python3 -m pip install --root=$(DESTDIR) --prefix=/usr .; \
+	else \
+		echo "Warning: pip not found, falling back to setup.py"; \
+		python3 setup.py install --root=$(DESTDIR) --prefix=/usr; \
+	fi
+
+install-web:
+	@echo "Installing web files..."
 	install -d $(DESTDIR)$(IMGRCVRYDIR)
 	install -d $(DESTDIR)$(bindir)
 	cp -rf $(INSTALLFILES) $(DESTDIR)$(IMGRCVRYDIR)
-	sed 's|^CGI_DIR=.*|CGI_DIR="$(CGIDIR)"|' $(APPSDIR)/image-recovery > $(DESTDIR)$(bindir)/image-recovery
+	# Install CGI-based shell script
+	sed 's|^CGI_DIR=.*|CGI_DIR="$(CGIDIR)"|' $(BINDIR)/image-recovery-web > $(DESTDIR)$(bindir)/image-recovery-web
+	chmod 755 $(DESTDIR)$(bindir)/image-recovery-web
 	chmod -R 755 $(DESTDIR)$(IMGRCVRYDIR)/cgi-bin
-	chmod 755 $(DESTDIR)$(bindir)/image-recovery
 
 clean:
 	@echo "Removing installed files..."
-	rm -rf $(DESTDIR)$(IMGRCVRYDIR) $(DESTDIR)$(bindir)/image-recovery
+	rm -rf $(DESTDIR)$(IMGRCVRYDIR) $(DESTDIR)$(bindir)/image-recovery-web
+	rm -rf $(DESTDIR)$(bindir)/image-recovery-cli
+	rm -rf build/ dist/ *.egg-info src/*.egg-info/
