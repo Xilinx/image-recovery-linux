@@ -31,12 +31,12 @@ install-web:
 	install -d $(DESTDIR)$(bindir)
 	cp -rf $(INSTALLFILES) $(DESTDIR)$(IMGRCVRYDIR)
 	# Install CGI-based shell script
-	sed 's|^CGI_DIR=.*|CGI_DIR="$(CGIDIR)"|' $(BINDIR)/image-recovery-web > $(DESTDIR)$(bindir)/image-recovery-web
-	chmod 755 $(DESTDIR)$(bindir)/image-recovery-web
+	sed 's|^CGI_DIR=.*|CGI_DIR="$(CGIDIR)"|' $(BINDIR)/image-recovery-cli > $(DESTDIR)$(bindir)/image-recovery-cli
+	chmod 755 $(DESTDIR)$(bindir)/image-recovery-cli
 	chmod -R 755 $(DESTDIR)$(IMGRCVRYDIR)/cgi-bin
 
 clean:
 	@echo "Removing installed files..."
-	rm -rf $(DESTDIR)$(IMGRCVRYDIR) $(DESTDIR)$(bindir)/image-recovery-web
+	rm -rf $(DESTDIR)$(IMGRCVRYDIR) $(DESTDIR)$(bindir)/image-recovery-cli
 	rm -rf $(DESTDIR)$(bindir)/image-mgmt
 	rm -rf build/ dist/ *.egg-info src/*.egg-info/
