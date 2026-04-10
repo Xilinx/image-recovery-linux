@@ -86,13 +86,13 @@ validate_args() {
 	# Check if DEVICE is required for upload-wic
 	if [ "$SCRIPT_FILE" = "upload_wicimage.sh" ] && [ -z "$DEVICE" ]; then
 		echo "Error: --device argument is required when using --upload-wic"
-		echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0"
+		echo "Usage: $(basename "$0") --upload-wic /path/to/image.wic --device /dev/mmcblk0"
 		exit 1
 	fi
 	# Check if --bmap is only used with --upload-wic
 	if [ -n "$BMAP_FILE" ] && [ "$SCRIPT_FILE" != "upload_wicimage.sh" ]; then
 		echo "Error: --bmap can only be used with --upload-wic"
-		echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap"
+		echo "Usage: $(basename "$0") --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap"
 		exit 1
 	fi
 }
@@ -186,10 +186,11 @@ execute_command() {
 
 # Function to show usage
 show_usage() {
+	local cmd=$(basename "$0")
 	cat <<EOF
 User-Space Image Recovery Tool
 
-Usage: $0 [options]
+Usage: $cmd [options]
 
 Options:
 	-h, --help              Show this help message
@@ -208,20 +209,20 @@ Command Options:
 	--ufs-write FILE [DEVICE]  Write UFS configuration from JSON FILE to device
 
 Examples:
-	$0 --sysinfo
-	$0 --bootstatus
-	$0 --version
-	$0 --scan-usb
-	$0 --upload-bootbin /path/to/BOOT.BIN
-	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0
-	$0 --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap
-	$0 --ufs-query ufsconfig.json
-	$0 --ufs-write ufsconfig.json
-	$0 --cgi-dir /custom/cgi/path --sysinfo
+	$cmd --sysinfo
+	$cmd --bootstatus
+	$cmd --version
+	$cmd --scan-usb
+	$cmd --upload-bootbin /path/to/BOOT.BIN
+	$cmd --upload-wic /path/to/image.wic --device /dev/mmcblk0
+	$cmd --upload-wic /path/to/image.wic --device /dev/mmcblk0 --bmap /path/to/file.bmap
+	$cmd --ufs-query ufsconfig.json
+	$cmd --ufs-write ufsconfig.json
+	$cmd --cgi-dir /custom/cgi/path --sysinfo
 
 UFS Configuration Workflow:
 	1. Query and save configuration:
-	   $0 --ufs-query ufsconfig.json
+	   $cmd --ufs-query ufsconfig.json
 	   (Displays current config + saves to a file)
 
 	2. Review the output and edit the JSON file if needed:
@@ -229,7 +230,7 @@ UFS Configuration Workflow:
 	   - Configure LU0-LU7 parameters
 
 	3. Write modified configuration back to device:
-	   $0 --ufs-write ufsconfig.json
+	   $cmd --ufs-write ufsconfig.json
 
 	4. Reboot system
 
@@ -283,7 +284,7 @@ parseargs() {
 			--upload-bootbin)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --upload-bootbin requires a file path argument"
-					echo "Usage: $0 --upload-bootbin /path/to/BOOT.BIN"
+					echo "Usage: $(basename "$0") --upload-bootbin /path/to/BOOT.BIN"
 					exit 1
 				fi
 				SCRIPT_FILE="upload_bootbin.sh"
@@ -298,7 +299,7 @@ parseargs() {
 			--upload-wic)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --upload-wic requires an image file path argument"
-					echo "Usage: $0 --upload-wic /path/to/image.wic --device /dev/mmcblk0"
+					echo "Usage: $(basename "$0") --upload-wic /path/to/image.wic --device /dev/mmcblk0"
 					exit 1
 				fi
 				SCRIPT_FILE="upload_wicimage.sh"
@@ -313,7 +314,7 @@ parseargs() {
 			--device)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --device requires a device path argument"
-					echo "Usage: $0 --device /dev/mmcblk0"
+					echo "Usage: $(basename "$0") --device /dev/mmcblk0"
 					exit 1
 				fi
 				DEVICE="$2"
@@ -322,7 +323,7 @@ parseargs() {
 			--bmap)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --bmap requires a bmap file path argument"
-					echo "Usage: $0 --bmap /path/to/file.bmap"
+					echo "Usage: $(basename "$0") --bmap /path/to/file.bmap"
 					exit 1
 				fi
 				BMAP_FILE="$2"
@@ -336,7 +337,7 @@ parseargs() {
 			--ufs-query)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --ufs-query requires a file path argument"
-				echo "Usage: $0 --ufs-query ufsconfig.json [/dev/bsg/ufs-bsg0]"
+				echo "Usage: $(basename "$0") --ufs-query ufsconfig.json [/dev/bsg/ufs-bsg0]"
 					exit 1
 				fi
 				SCRIPT_FILE="ufs_query"
@@ -353,7 +354,7 @@ parseargs() {
 			--ufs-write)
 				if [ -z "$2" ] || [[ "$2" == -* ]]; then
 					echo "Error: --ufs-write requires a file path argument"
-				echo "Usage: $0 --ufs-write ufsconfig.json [/dev/bsg/ufs-bsg0]"
+				echo "Usage: $(basename "$0") --ufs-write ufsconfig.json [/dev/bsg/ufs-bsg0]"
 					exit 1
 				fi
 				SCRIPT_FILE="ufs_write"
@@ -372,7 +373,7 @@ parseargs() {
 				;;
 			*)
 				echo "Unknown option: $1"
-				echo "Run '$0 --help' for usage information"
+				echo "Run '$(basename "$0") --help' for usage information"
 				exit 1
 				;;
 		esac
