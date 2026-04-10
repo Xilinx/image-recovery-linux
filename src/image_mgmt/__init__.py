@@ -3,6 +3,6 @@
 
 """AMD System Boot Image Recovery Tool"""
 
-__version__ = "1.0.0"
-__author__ = "Advanced Micro Devices, Inc."
+__version__ = "1.1"
+__author__ = "rajukumar.pothuraju@amd.com"
 __license__ = "MIT"

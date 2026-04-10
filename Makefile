@@ -38,5 +38,5 @@ install-web:
 clean:
 	@echo "Removing installed files..."
 	rm -rf $(DESTDIR)$(IMGRCVRYDIR) $(DESTDIR)$(bindir)/image-recovery-web
-	rm -rf $(DESTDIR)$(bindir)/image-recovery-cli
+	rm -rf $(DESTDIR)$(bindir)/image-mgmt
 	rm -rf build/ dist/ *.egg-info src/*.egg-info/

@@ -6,7 +6,7 @@ import os
 
 # Read version from package
 def get_version():
-    version_file = os.path.join('src', 'image_recovery_cli', '__init__.py')
+    version_file = os.path.join('src', 'image_mgmt', '__init__.py')
     if os.path.exists(version_file):
         with open(version_file, 'r') as f:
             for line in f:
@@ -23,7 +23,7 @@ setup(
     license='MIT',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
-    scripts=['bin/image-recovery-cli'],
+    scripts=['bin/image-mgmt'],
     python_requires='>=3.6',
     install_requires=[],
     classifiers=[

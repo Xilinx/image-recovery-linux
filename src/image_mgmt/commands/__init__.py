@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
-"""Command modules for image-recovery-cli tool"""
+"""Command modules for image-mgmt tool"""
 
 from . import version
 from . import bootstatus

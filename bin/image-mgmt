@@ -6,7 +6,7 @@
 
 import argparse
 import sys
-from image_recovery_cli import commands, utils
+from image_mgmt import commands, utils
 
 
 def main():
@@ -14,11 +14,11 @@ def main():
     # Check root privileges
     if not utils.check_root_privileges():
         print("Error: This tool requires root privileges.", file=sys.stderr)
-        print("Please run with: sudo image-recovery-cli", file=sys.stderr)
+        print("Please run with: sudo image-mgmt", file=sys.stderr)
         return 1
 
     parser = argparse.ArgumentParser(
-        prog='image-recovery-cli',
+        prog='image-mgmt',
         description='AMD System Boot Image Recovery Tool'
     )
 
