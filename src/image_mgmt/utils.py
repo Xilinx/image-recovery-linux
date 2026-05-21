@@ -55,6 +55,8 @@ XIH_IHT_LEN = 0x80                     # Image Header Table length (128 bytes)
 XLNX_IDENTIFIER_OFFSET = 0x14          # Boot header "XNLX" identifier offset
 OPT_DATA_ID_VERSION = 0x21             # Optional data ID for version string
 MAX_VERSION_LENGTH = 128               # Maximum version string length
+VERSION_STRING_OFFSET = 0x70
+VERSION_STRING_SIZE = 0x24
 
 
 def detect_platform():
@@ -66,9 +68,14 @@ def detect_platform():
         # Check if it's Versal 2 variant (Versal_2VE_2VM)
         if 'versal_2ve_2vm' in family.replace('-', '_'):
             return 'versal_2ve_2vm'
+
+        if 'zynqmp' in family:
+            return 'zynqmp'
+
+        if 'versal' in family:
+            return 'versal'
     except (FileNotFoundError, PermissionError, IOError):
         pass
-
     # Default (covers Versal, ZynqMP, and any unknown platforms - uses 0xC4)
     return 'default'
 
@@ -199,37 +206,97 @@ def extract_strings(data: bytes) -> List[str]:
     return []
 
 
+def clean_version_metadata(version_str: str) -> str:
+    """Remove metadata markers and cleanup version string."""
+    if not version_str:
+        return None
+
+    # Handle Version= prefix - split on semicolon first, then remove prefix
+    if 'Version=' in version_str:
+        if ';' in version_str:
+            version_str = version_str.split(';', 1)[1]
+        version_str = version_str.replace('Version=', '')
+
+    # Remove metadata fields (CRC=, SW_HDR_SHA256=, etc.)
+    tokens = version_str.split()
+    clean_tokens = []
+    for token in tokens:
+        if '=' in token:
+            break
+        if token.upper() in ['CRC', 'SW_CRC', 'SHA256', 'SW_HDR_SHA256', 'CHECKSUM']:
+            break
+        clean_tokens.append(token)
+
+    version_str = ' '.join(clean_tokens).strip()
+    return version_str if version_str else None
+
+
+def extract_version_from_offset(device_path: str, offset: int = VERSION_STRING_OFFSET,
+                                 size: int = VERSION_STRING_SIZE) -> str:
+    """Extract version string from fixed offset in boot image."""
+    try:
+        data = read_binary_file(device_path, offset=offset, count=size)
+
+        if not data or len(data) < size:
+            return None
+
+        null_idx = data.find(b'\x00')
+        if null_idx > 0:
+            version_str = data[:null_idx].decode('utf-8', errors='ignore').strip()
+        else:
+            version_str = data.decode('utf-8', errors='ignore').strip()
+
+        if version_str and all(c.isprintable() or c.isspace() for c in version_str):
+            version_str = ' '.join(version_str.split())
+            return version_str if version_str else None
+
+        return None
+    except Exception as e:
+        error_msg(f"Failed to extract version from {device_path} at offset {offset:#x}: {e}")
+        return None
+
+
 def extract_version_from_strings(strings_list: List[str], version_type: str = 'default') -> str:
     """Extract version string from list of strings."""
-
-    # Try bootfw pattern first (for active-bank)
-    if version_type == 'active-bank':
-        for line in strings_list:
-            if re.search(r'amd-edf-.*-bootfw-v[0-9]', line):
-                return line
-
-    # Try Version= pattern
     for line in strings_list:
-        if 'Version=' in line:
-            # Remove everything up to and including first semicolon
-            if ';' in line:
-                line = line.split(';', 1)[1]
-            # Clean up
-            line = line.replace('Version=', '')
-            line = line.replace(';', ' ')
-            line = line.replace('SW_CRC', 'CRC')
-            return line.strip()
+        line_stripped = line.strip()
 
-    # Try simple version pattern (not for active-bank)
-    if version_type != 'active-bank':
-        for line in strings_list:
-            # Match pattern like "1.2.3" or "1.2.3+git"
-            match = re.match(r'^(\d+\.\d+(?:\+git)?)$', line.strip())
-            if match:
-                version = match.group(1)
-                # Remove +git suffix
-                version = version.replace('+git', '')
+        if len(line_stripped) < 3:
+            continue
+
+        line_cleaned = ''.join(c if c.isprintable() or c.isspace() else '' for c in line_stripped).strip()
+        if not line_cleaned or len(line_cleaned) < 3:
+            continue
+
+        if 'Version=' in line_cleaned:
+            version = clean_version_metadata(line_cleaned)
+            if version:
                 return version
+
+        match = re.search(r'^(.+)-v(\d+(?:\.\d+)*)$', line_cleaned, re.IGNORECASE)
+        if match:
+            full_string = match.group(0)
+            if '-' in full_string and len(full_string) > 5:
+                return full_string
+
+        match = re.search(r'(\S+-(?:imgrcvry|bootfw|recovery|selector)-v\d+(?:\.\d+)?)', line_cleaned, re.IGNORECASE)
+        if match:
+            return match.group(1)
+
+        if '-v' in line_cleaned.lower() and len(line_cleaned) > 10:
+            if line_cleaned.count('-') >= 3:
+                return line_cleaned
+
+        if version_type != 'active-bank':
+            match = re.match(r'^(\d+\.\d+(?:\.\d+)?(?:\+git)?)$', line_cleaned)
+            if match:
+                version = match.group(1).replace('+git', '')
+                return version
+
+        if version_type != 'active-bank':
+            match = re.search(r'/usr/src/debug/[^/\s]+/(\d{4}\.\d+(?:\+git)?)/', line_cleaned)
+            if match:
+                return match.group(1).replace('+git', '')
 
     return None
 

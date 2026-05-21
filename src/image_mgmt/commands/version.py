@@ -17,14 +17,15 @@ def setup_parser(subparsers):
     return parser
 
 
-def extract_bootgen_version(device_path):
+def extract_bootgen_version(device_path, platform='default'):
     """
     Extract version string from bootgen optional data fields.
     Platform is auto-detected from /proc/device-tree/family.
     """
     try:
         # Auto-detect platform
-        platform = utils.detect_platform()
+        if platform == 'default':
+            platform = utils.detect_platform()
 
         # Select IHT offset based on platform
         # versal_2ve_2vm uses 0x2D0, default (Versal/ZynqMP) uses 0xC4
@@ -73,7 +74,7 @@ def extract_bootgen_version(device_path):
                 # Remove any non-printable characters
                 version_str = ''.join(c for c in version_str if c.isprintable())
 
-                return version_str if version_str else None
+                return utils.clean_version_metadata(version_str)
 
             # Move to next optional data entry
             # Length includes the header, so just add length_bytes
@@ -82,25 +83,31 @@ def extract_bootgen_version(device_path):
         return None
 
     except Exception as e:
+        utils.error_msg(f"Failed to extract bootgen version from {device_path}: {e}")
         return None
 
 
 def get_version(version_type):
     """Get version information from MTD device"""
+    platform = utils.detect_platform()
 
     # Determine device and label based on type
     if version_type == 'recovery':
         device = utils.MTD_RECOVERY
         label = "Image Recovery Application"
+        ver_type = 'recovery'
     elif version_type == 'selector':
         device = utils.MTD_SELECTOR
         label = "Image Selector Application"
+        ver_type = 'selector'
     elif version_type == 'bank-a':
         device = utils.MTD_BANK_A
         label = "Bank A image ver"
+        ver_type = 'bank'
     elif version_type == 'bank-b':
         device = utils.MTD_BANK_B
         label = "Bank B image ver"
+        ver_type = 'bank'
     else:
         return (f"Error: Unknown version type: {version_type}", None)
 
@@ -108,9 +115,21 @@ def get_version(version_type):
     if not os.path.exists(device):
         return (label, "Not Available")
 
-    # Extract version from bootgen optional data
-    # MTD devices are already partition-specific, so read from offset 0
-    version = extract_bootgen_version(device)
+    version = None
+
+    if platform == 'zynqmp':
+        version = utils.extract_version_from_offset(device)
+    else:
+        # Modern platforms: use optional data extraction
+        version = extract_bootgen_version(device, platform)
+
+    if not version:
+        try:
+            data = utils.read_binary_file(device, offset=0, count=2097152)
+            strings_list = utils.extract_strings(data)
+            version = utils.extract_version_from_strings(strings_list, version_type=ver_type)
+        except Exception as e:
+            utils.error_msg(f"Failed to extract version from strings for {device}: {e}")
 
     if version:
         return (label, version)

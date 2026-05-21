@@ -81,12 +81,16 @@ def update_metadata(metadata_file, active_bank):
 def extract_version_info(boot_file):
     """Extract version information from boot.bin"""
     try:
+        version = utils.extract_version_from_offset(boot_file)
+        if version:
+            return version
+
         with open(boot_file, 'rb') as f:
             data = f.read()
         strings_list = utils.extract_strings(data)
-        return utils.extract_version_from_strings(strings_list, 'default')
-    except Exception:
-        pass
+        return utils.extract_version_from_strings(strings_list, version_type='default')
+    except Exception as e:
+        utils.error_msg(f"Failed to extract version info from {boot_file}: {e}")
     return None
 
 
