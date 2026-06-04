@@ -180,6 +180,36 @@ EEPROM_DEVICE_PATTERN = "/sys/bus/i2c/devices/*/eeprom"
 UFS_DEVICE_PATTERN = r'^/dev/bsg/ufs-bsg[0-9]+$'
 
 
+def find_ufs_devices():
+    """
+    Find all available UFS BSG devices on the system.
+
+    Returns:
+        list: List of UFS device paths (e.g., ['/dev/bsg/ufs-bsg0'])
+              Empty list if no UFS devices found
+    """
+    import glob
+
+    ufs_devices = glob.glob('/dev/bsg/ufs-bsg*')
+    valid_devices = [
+        device for device in ufs_devices
+        if re.match(UFS_DEVICE_PATTERN, device)
+    ]
+    # Sort to ensure consistent ordering
+    return sorted(valid_devices)
+
+
+def get_default_ufs_device():
+    """
+    Get the default UFS device to use.
+
+    Returns:
+        str: Path to default UFS device, or None if no UFS devices found
+    """
+    devices = find_ufs_devices()
+    return devices[0] if devices else None
+
+
 def print_progress(percentage: int, message: str):
     """Print progress update (wrapper for backward compatibility)"""
     progress_msg(percentage, message)

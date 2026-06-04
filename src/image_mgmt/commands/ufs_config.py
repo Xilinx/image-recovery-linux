@@ -16,8 +16,8 @@ from .. import utils
 def setup_parser(subparsers):
     """Setup argument parser for ufs-config command."""
     parser = subparsers.add_parser('ufs-config', help='Configure UFS device')
-    parser.add_argument('--device', default='/dev/bsg/ufs-bsg0',
-                        help='UFS device path (e.g., /dev/bsg/ufs-bsg0)')
+    parser.add_argument('--device', default=utils.get_default_ufs_device(),
+                        help='UFS device path (e.g., /dev/bsg/ufs-bsg0). Auto-detected if omitted.')
     parser.add_argument('--query', nargs='?', const='ufs_config_query.json', metavar='OUTPUT_JSON',
                         help='Query current UFS configuration and save to JSON file (optional: specify output file path)')
     parser.add_argument('--write', metavar='CONFIG_JSON',
@@ -260,6 +260,12 @@ def run(args):
     """Configure UFS device"""
     if os.geteuid() != 0:
         utils.error_msg("This command requires root privileges")
+        return 1
+
+    # Check if device exists (either auto-detected or user-specified)
+    if args.device is None:
+        utils.error_msg("No UFS devices found on this platform")
+        utils.error_msg("UFS configuration requires a UFS storage device")
         return 1
 
     if not re.match(utils.UFS_DEVICE_PATTERN, args.device):
