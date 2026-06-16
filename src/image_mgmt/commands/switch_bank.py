@@ -104,6 +104,18 @@ def run(args):
             print("="*60 + "\n")
             return 0
 
+        # Validate target bank contains a valid boot image
+        utils.info_msg(f"Validating {target_name} boot image...")
+        target_mtd = utils.MTD_BANK_A if target_bank == 0 else utils.MTD_BANK_B
+        is_valid, error_msg = utils.validate_bank_image(target_mtd)
+
+        if not is_valid:
+            utils.error_msg(f"Cannot switch to {target_name}: {error_msg}")
+            print("="*60 + "\n")
+            return 1
+
+        utils.success_msg(f"{target_name} contains a valid boot image")
+
         # Save metadata to temp file for modification
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.bin') as tmp:
             metadata_file = tmp.name

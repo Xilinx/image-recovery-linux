@@ -133,6 +133,12 @@ def run(args):
         utils.error_msg("Boot file is empty")
         return 1
 
+    # Validate boot.bin format
+    is_valid, error_msg = utils.validate_boot_bin(args.file)
+    if not is_valid:
+        utils.error_msg(error_msg)
+        return 1
+
     print("\n" + "="*60)
     utils.info_msg(f"Boot file: {args.file}")
     utils.info_msg(f"File size: {file_size:,} bytes ({file_size / 1024 / 1024:.2f} MB)")

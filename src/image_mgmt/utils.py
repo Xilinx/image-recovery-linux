@@ -9,7 +9,7 @@ import sys
 import struct
 import subprocess
 import tempfile
-from typing import Any, List
+from typing import Any, List, Optional, Tuple
 
 
 def info_msg(message: str):
@@ -52,7 +52,15 @@ def step_msg(step: str, total: str, message: str):
 IHT_OFFSET_DEFAULT = 0xC4              # Image Header Table offset (default: Versal/ZynqMP)
 IHT_OFFSET_VERSAL_2VE_2VM = 0x2D0      # Image Header Table offset for Versal_2VE_2VM
 XIH_IHT_LEN = 0x80                     # Image Header Table length (128 bytes)
-XLNX_IDENTIFIER_OFFSET = 0x14          # Boot header "XNLX" identifier offset
+
+# Boot header magic identifiers - platform-specific offsets
+BOOT_SYNC_WORD = b'\x66\x55\x99\xaa'   # Xilinx boot header sync word (0xAA995566 in LE)
+BOOT_XNLX_MAGIC = b'XNLX'              # Xilinx identifier magic
+BOOT_HEADER_OFFSETS = [
+    (0x20, 0x24),  # ZynqMP: (sync_offset, xnlx_offset)
+    (0x10, 0x14),  # Versal/versal_2ve_2vm : (sync_offset, xnlx_offset)
+]
+
 OPT_DATA_ID_VERSION = 0x21             # Optional data ID for version string
 MAX_VERSION_LENGTH = 128               # Maximum version string length
 VERSION_STRING_OFFSET = 0x70
@@ -97,6 +105,108 @@ def run_command(cmd: List[str], check: bool = True, capture_output: bool = True)
 def check_root_privileges() -> bool:
     """Check if running with root privileges."""
     return os.geteuid() == 0
+
+
+def _has_valid_boot_header(f) -> bool:
+    """
+    Check if an open file object contains a valid Xilinx boot header.
+    Supports both ZynqMP and Versal/versal_2ve_2vm header formats.
+
+    Args:
+        f: Open file object (binary mode) positioned anywhere
+
+    Returns:
+        bool: True if a valid boot header is found, False otherwise
+    """
+    # Try each known header offset pattern
+    for sync_offset, xnlx_offset in BOOT_HEADER_OFFSETS:
+        # Check sync word
+        f.seek(sync_offset)
+        sync_bytes = f.read(len(BOOT_SYNC_WORD))
+
+        if len(sync_bytes) < len(BOOT_SYNC_WORD):
+            continue  # Try next pattern
+
+        # Check XNLX magic
+        f.seek(xnlx_offset)
+        xnlx_bytes = f.read(len(BOOT_XNLX_MAGIC))
+
+        if len(xnlx_bytes) < len(BOOT_XNLX_MAGIC):
+            continue  # Try next pattern
+
+        # If both match, it's a valid boot header
+        if sync_bytes == BOOT_SYNC_WORD and xnlx_bytes == BOOT_XNLX_MAGIC:
+            return True
+
+    return False
+
+
+def validate_boot_bin(file_path: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate if a file is a valid boot.bin by checking for Xilinx boot header.
+    Supports both ZynqMP and Versal/versal_2ve_2vm  header formats.
+
+    Args:
+        file_path: Path to the boot.bin file to validate
+
+    Returns:
+        tuple: (is_valid, error_message) - error_message is None if valid
+    """
+    try:
+        # Check file size
+        file_size = os.path.getsize(file_path)
+        if file_size < 40:  # Minimum size to contain any header variant
+            return False, "File too small to be a valid boot.bin (minimum 40 bytes required)"
+
+        with open(file_path, 'rb') as f:
+            if _has_valid_boot_header(f):
+                return True, None
+
+            # No valid pattern found
+            return False, "Invalid boot.bin, boot.bin was corrupted boot image"
+
+    except Exception as e:
+        return False, f"Failed to validate boot.bin: {e}"
+
+
+def validate_bank_image(mtd_device: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate if an MTD bank contains a valid boot image by checking for Xilinx boot header.
+    Supports both ZynqMP and Versal/versal_2ve_2vm  header formats.
+
+    Args:
+        mtd_device: Path to the MTD device (e.g., /dev/mtd11 for Bank A)
+
+    Returns:
+        tuple: (is_valid, error_message) - error_message is None if valid
+    """
+    try:
+        with open(mtd_device, 'rb') as f:
+            if _has_valid_boot_header(f):
+                return True, None
+
+            # Check if bank is empty by scanning first 4KB
+            f.seek(0)
+            check_size = 4096  # 4KB should be sufficient and efficient
+            leading_region = f.read(check_size)
+
+            if len(leading_region) > 0:
+                # Bank is empty only if the entire leading region is uniformly erased (0xFF) or zero (0x00)
+                is_all_erased = all(b == 0xFF for b in leading_region)
+                is_all_zero = all(b == 0x00 for b in leading_region)
+
+                if is_all_erased or is_all_zero:
+                    return False, "Bank is empty (contains no boot image)"
+
+            # Not empty but no valid header found
+            return False, "Bank contains corrupted or invalid boot image"
+
+    except FileNotFoundError:
+        return False, f"MTD device not found: {mtd_device}"
+    except PermissionError:
+        return False, f"Permission denied reading {mtd_device}"
+    except Exception as e:
+        return False, f"Failed to validate bank: {e}"
 
 
 def read_binary_file(path, offset=0, count=None):
