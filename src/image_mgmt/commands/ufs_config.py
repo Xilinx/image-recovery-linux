@@ -16,8 +16,8 @@ from .. import utils
 def setup_parser(subparsers):
     """Setup argument parser for ufs-config command."""
     parser = subparsers.add_parser('ufs-config', help='Configure UFS device')
-    parser.add_argument('--device', default=utils.get_default_ufs_device(),
-                        help='UFS device path (e.g., /dev/bsg/ufs-bsg0). Auto-detected if omitted.')
+    parser.add_argument('--device', default=None,
+                        help='UFS device path (e.g., /dev/bsg/ufs-bsg0). If omitted, will prompt for selection when multiple devices are available.')
     parser.add_argument('--query', nargs='?', const='ufs_config_query.json', metavar='OUTPUT_JSON',
                         help='Query current UFS configuration and save to JSON file (optional: specify output file path)')
     parser.add_argument('--write', metavar='CONFIG_JSON',
@@ -262,11 +262,18 @@ def run(args):
         utils.error_msg("This command requires root privileges")
         return 1
 
-    # Check if device exists (either auto-detected or user-specified)
+    # Auto-detect device if not specified
     if args.device is None:
-        utils.error_msg("No UFS devices found on this platform")
-        utils.error_msg("UFS configuration requires a UFS storage device")
-        return 1
+        devices = utils.find_ufs_devices()
+        if not devices:
+            utils.error_msg("No UFS devices found on this platform")
+            utils.error_msg("UFS configuration requires a UFS storage device")
+            return 1
+
+        args.device = utils.prompt_device_selection(devices, "UFS")
+        if args.device is None:
+            utils.error_msg("Device selection cancelled by user")
+            return 1
 
     if not re.match(utils.UFS_DEVICE_PATTERN, args.device):
         utils.error_msg(f"Invalid device path: {args.device}")

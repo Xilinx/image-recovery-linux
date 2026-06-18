@@ -309,15 +309,65 @@ def find_ufs_devices():
     return sorted(valid_devices)
 
 
-def get_default_ufs_device():
+def prompt_device_selection(devices: List[str], device_type: str) -> Optional[str]:
     """
-    Get the default UFS device to use.
+    Prompt user to select a device from a list.
+    Auto-selects first device in non-interactive environments (no TTY) or when
+    IMAGE_MGMT_AUTO_SELECT environment variable is set.
+
+    Args:
+        devices: List of device paths to choose from
+        device_type: Type of device for display (e.g., 'UFS', 'EEPROM')
 
     Returns:
-        str: Path to default UFS device, or None if no UFS devices found
+        Selected device path, or None if cancelled or no devices available
     """
-    devices = find_ufs_devices()
-    return devices[0] if devices else None
+    if not devices:
+        return None
+
+    # Single device - auto-select
+    if len(devices) == 1:
+        info_msg(f"Auto-selected {device_type} device (only one available): {devices[0]}")
+        return devices[0]
+
+    # Check for non-interactive mode (environment variable or no TTY)
+    auto_select = os.getenv('IMAGE_MGMT_AUTO_SELECT', 'false').lower() in ('true', '1', 'yes')
+    has_tty = sys.stdin.isatty()
+
+    if auto_select or not has_tty:
+        selected = devices[0]
+        reason = "env variable set" if auto_select else "no TTY detected"
+        info_msg(f"Auto-selected {device_type} device ({reason}): {selected}")
+        return selected
+
+    # Interactive mode - prompt user
+    info_msg(f"Found {len(devices)} {device_type} devices:")
+    print("  0. Exit/Cancel")
+    for idx, device in enumerate(devices, 1):
+        print(f"  {idx}. {device}")
+
+    while True:
+        try:
+            choice = input(f"Select {device_type} device (enter number, 0 to exit): ").strip()
+            if not choice:
+                warning_msg("Please enter a number")
+                continue
+
+            device_num = int(choice)
+            if device_num == 0:
+                info_msg("Operation cancelled by user")
+                return None
+            elif 1 <= device_num <= len(devices):
+                selected = devices[device_num - 1]
+                success_msg(f"Selected: {selected}")
+                return selected
+            else:
+                warning_msg(f"Invalid choice. Enter 1-{len(devices)} to select, or 0 to cancel")
+        except ValueError:
+            warning_msg("Please enter a valid number")
+        except (EOFError, KeyboardInterrupt):
+            info_msg("\nOperation cancelled by user")
+            return None
 
 
 def print_progress(percentage: int, message: str):

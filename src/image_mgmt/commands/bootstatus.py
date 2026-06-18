@@ -47,8 +47,13 @@ def get_fru_info() -> Dict[str, Any]:
         if not eeprom_files:
             return {'error': 'No EEPROM devices found'}
 
+        # Handle EEPROM device selection (single or multiple)
+        selected_eeprom = utils.prompt_device_selection(eeprom_files, "EEPROM")
+        if selected_eeprom is None:
+            return {'error': 'Operation cancelled by user'}
+
         result = utils.run_command(
-            ['ipmi-fru', f'--fru-file={eeprom_files[0]}', '--interpret-oem-data'],
+            ['ipmi-fru', f'--fru-file={selected_eeprom}', '--interpret-oem-data'],
             check=False
         )
 
