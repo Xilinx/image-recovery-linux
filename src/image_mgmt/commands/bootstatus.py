@@ -140,11 +140,13 @@ def run(args):
     utils.info_msg(f"Previous Bank: {boot_status['previous_bank']}")
 
     # Display CRC values
-    print("\n" + "-"*60)
-    print("Bank CRC Values")
-    print("-"*60)
-    utils.info_msg(f"Bank A CRC: {read_mtd_crc(utils.MTD_BANK_A)}")
-    utils.info_msg(f"Bank B CRC: {read_mtd_crc(utils.MTD_BANK_B)}")
+    platform = utils.detect_platform()
+    if platform != 'zynqmp':
+        print("\n" + "-"*60)
+        print("Bank CRC Values")
+        print("-"*60)
+        utils.info_msg(f"Bank A CRC: {read_mtd_crc(utils.MTD_BANK_A)}")
+        utils.info_msg(f"Bank B CRC: {read_mtd_crc(utils.MTD_BANK_B)}")
 
     # Display FRU information
     print("\n" + "-"*60)
