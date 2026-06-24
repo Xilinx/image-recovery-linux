@@ -133,7 +133,7 @@ def run(args):
 
             print("\n" + "="*60)
             utils.success_msg(f"Active bank switched to {target_name}")
-            utils.warning_msg("The system will boot from the selected bank on next reboot")
+            utils.warning_msg(f"{target_name} will boot on next reboot")
             print("="*60 + "\n")
 
             return 0

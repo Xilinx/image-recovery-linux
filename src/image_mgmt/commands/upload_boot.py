@@ -6,7 +6,6 @@
 import os
 import re
 import sys
-import struct
 import tempfile
 from .. import utils
 
@@ -46,36 +45,28 @@ def flash_boot_image(boot_file, target_mtd, target_name):
 
 
 def update_metadata(metadata_file, active_bank):
-    """Update metadata to switch active bank"""
+    """Update metadata to mark the newly flashed bank as ready (but not active)"""
     utils.step_msg("3", "4", "Updating boot metadata")
-    utils.progress_msg(80, "Updating metadata to switch active bank...")
+    utils.progress_msg(80, "Marking flashed bank as ready...")
 
-    # Determine new values based on active bank
+    # Determine which bank was flashed based on currently active bank
     if active_bank == 0:
-        # Currently Bank A, switching to Bank B
-        new_active = 1
-        new_prev = 0
+        # Bank A is active, we flashed Bank B
         bank_status_offset = 25  # Bank B status at 0x19
+        flashed_bank = 'B'
     else:
-        # Currently Bank B, switching to Bank A
-        new_active = 0
-        new_prev = 1
+        # Bank B is active, we flashed Bank A
         bank_status_offset = 24  # Bank A status at 0x18
+        flashed_bank = 'A'
 
-    # Update active bank (offset 0x8)
+    # Only update the flashed bank's status to ready (0xfc)
+    # Do NOT change the active bank pointer - that should only happen via switch-bank command
     with open(metadata_file, 'r+b') as f:
-        f.seek(0x8)
-        f.write(struct.pack('<I', new_active))
-
-        # Update previous bank (offset 0xC)
-        f.seek(0xC)
-        f.write(struct.pack('<I', new_prev))
-
-        # Update bank status to healthy (0xfc)
+        # Update bank status to ready (0xfc) to indicate valid image
         f.seek(bank_status_offset)
         f.write(b'\xfc')
 
-    utils.success_msg("Metadata updated successfully")
+    utils.success_msg(f"Bank {flashed_bank} marked as ready (use 'switch-bank' to activate)")
 
 
 def extract_version_info(boot_file):
@@ -161,12 +152,12 @@ def run(args):
             # Bank A is active, flash to Bank B
             target_mtd = utils.MTD_BANK_B
             target_bank = 'B'
-            target_name = "Bank B (will become active after reboot)"
+            target_name = "Bank B (inactive - flash target)"
         else:
             # Bank B is active, flash to Bank A
             target_mtd = utils.MTD_BANK_A
             target_bank = 'A'
-            target_name = "Bank A (will become active after reboot)"
+            target_name = "Bank A (inactive - flash target)"
 
         utils.info_msg(f"Target: {target_mtd} - {target_name}")
         utils.progress_msg(20, f"Preparing to flash Bank {target_bank}...")
@@ -204,7 +195,8 @@ def run(args):
                 utils.info_msg(f"Build Date: {build_date}")
 
             print("="*60)
-            utils.warning_msg("System will boot from the new bank on next reboot")
+            utils.info_msg(f"Bank {target_bank} is ready but NOT active yet")
+            utils.info_msg(f"To activate Bank {target_bank}, run: image-mgmt switch-bank {target_bank.lower()}")
             print()
 
             return 0

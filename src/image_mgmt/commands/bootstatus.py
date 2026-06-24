@@ -105,8 +105,8 @@ def get_boot_status() -> Dict[str, Any]:
         prev_active_bank = utils.hexdump_value(metadata, offset=0xC, length=4, format_type='int')
 
         return {
-            'bank_a_status': 'active' if bank_a_status == 'fc' else 'inactive',
-            'bank_b_status': 'active' if bank_b_status == 'fc' else 'inactive',
+            'bank_a_status': 'Bootable (Valid boot.bin)' if bank_a_status == 'fc' else 'Non-bootable (No valid boot.bin)',
+            'bank_b_status': 'Bootable (Valid boot.bin)' if bank_b_status == 'fc' else 'Non-bootable (No valid boot.bin)',
             'active_bank': 'A' if active_bank == 0 else 'B',
             'previous_bank': 'A' if prev_active_bank == 0 else 'B'
         }
