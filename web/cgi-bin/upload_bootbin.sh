@@ -12,6 +12,10 @@ SCRIPT_DIR="$(dirname "$0")"
 METADATA_FILE="sys_mdata.bin"
 USB_PATH_FILE="$CGIBASHOPTS_DIR/usb_boot_path.txt"
 
+# Boot header magic identifiers - platform-specific offsets
+BOOT_SYNC_WORD=$(printf '\x66\x55\x99\xaa' | hexdump -ve '1/1 "%.2x"')   # Xilinx boot header sync word (0xAA995566 in LE)
+BOOT_XNLX_MAGIC=$(printf 'XNLX' | hexdump -ve '1/1 "%.2x"')              # Xilinx identifier magic
+
 # Initialize logging variables
 FINAL_STATUS=""
 FINAL_MESSAGE=""
@@ -140,6 +144,66 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 			trap 'rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE" "$USB_PATH_FILE"; [ "$LOGGING_ENABLED" = "1" ] && log_finalize "$FINAL_STATUS" "$FINAL_MESSAGE"' EXIT
 		fi
 	fi
+
+	# Validate boot.bin file
+	log_info "Validating boot.bin file: $file_path"
+
+	# Check if file exists
+	if [ ! -f "$file_path" ]; then
+		log_error "Boot file not found: $file_path"
+		FINAL_STATUS="FAIL"
+		FINAL_MESSAGE="Boot file not found"
+		echo "FLASH_STATUS=FAIL"
+		echo "FLASH_REASON=Boot file not found: $file_path"
+		echo "</pre></body></html>"
+		exit 1
+	fi
+
+	# Check file size (empty file check)
+	file_size=$(stat -c%s "$file_path" 2>/dev/null || wc -c < "$file_path")
+	log_info "Boot file size: $file_size bytes"
+
+	if [ "$file_size" -eq 0 ]; then
+		log_error "Boot file is empty"
+		FINAL_STATUS="FAIL"
+		FINAL_MESSAGE="Boot file is empty"
+		echo "FLASH_STATUS=FAIL"
+		echo "FLASH_REASON=Boot file is empty"
+		echo "</pre></body></html>"
+		exit 1
+	fi
+
+	# Validate boot header (check for Xilinx boot sync word and XNLX magic)
+	# Try ZynqMP offsets first (sync at 0x20, XNLX at 0x24)
+	sync_word=$(dd if="$file_path" bs=1 skip=32 count=4 2>/dev/null | hexdump -ve '1/1 "%.2x"')
+	xnlx_magic=$(dd if="$file_path" bs=1 skip=36 count=4 2>/dev/null | hexdump -ve '1/1 "%.2x"')
+
+	is_valid=0
+	if [ "$sync_word" = "$BOOT_SYNC_WORD" ] && [ "$xnlx_magic" = "$BOOT_XNLX_MAGIC" ]; then
+		is_valid=1
+		log_info "Valid ZynqMP boot header detected"
+	else
+		# Try Versal offsets (sync at 0x10, XNLX at 0x14)
+		sync_word=$(dd if="$file_path" bs=1 skip=16 count=4 2>/dev/null | hexdump -ve '1/1 "%.2x"')
+		xnlx_magic=$(dd if="$file_path" bs=1 skip=20 count=4 2>/dev/null | hexdump -ve '1/1 "%.2x"')
+
+		if [ "$sync_word" = "$BOOT_SYNC_WORD" ] && [ "$xnlx_magic" = "$BOOT_XNLX_MAGIC" ]; then
+			is_valid=1
+			log_info "Valid Versal boot header detected"
+		fi
+	fi
+
+	if [ "$is_valid" -eq 0 ]; then
+		log_error "Invalid or corrupted boot.bin: boot image validation failed"
+		FINAL_STATUS="FAIL"
+		FINAL_MESSAGE="Invalid or corrupted boot.bin"
+		echo "FLASH_STATUS=FAIL"
+		echo "FLASH_REASON=Invalid or corrupted boot.bin: boot image validation failed"
+		echo "</pre></body></html>"
+		exit 1
+	fi
+
+	log_success "Boot file validation passed"
 
 	# Read current active bank from metadata
 	log_info "Reading metadata from /dev/mtd5"
