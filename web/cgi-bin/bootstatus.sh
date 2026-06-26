@@ -74,7 +74,9 @@ get_version() {
 	local dev="$1"
 	local snippet_file
 	snippet_file=$(mktemp) || return
-	if dd if="$dev" of="$snippet_file" bs=512k count=8 2>/dev/null; then
+	# Add iflag=direct to bypass kernel cache and read fresh data from MTD
+	if dd if="$dev" of="$snippet_file" bs=512k count=8 iflag=direct 2>/dev/null || \
+	   dd if="$dev" of="$snippet_file" bs=512k count=8 2>/dev/null; then
 		# Remove everything up to and including the first semicolon
 		# Then extract the Version= field
 		strings "$snippet_file" | grep -m1 'Version='| sed 's/^[^;]*;//' | sed 's/Version=//; s/;/ /g; s/SW_CRC/CRC/'
