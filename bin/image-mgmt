@@ -6,7 +6,12 @@
 
 import argparse
 import sys
-from image_mgmt import commands, utils
+from image_mgmt import commands, utils, __version__
+
+
+def DisplayVersion():
+    """Display image-mgmt version and exit"""
+    return 'image-mgmt v%s' % __version__
 
 
 def main():
@@ -22,11 +27,15 @@ def main():
         description='AMD System Boot Image Recovery Tool'
     )
 
+    # Add version argument
+    parser.add_argument('-v', '--version', action='version', version=DisplayVersion(),
+                        help='show version information and exit')
+
     # Create subparsers
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
     # Setup command parsers
-    commands.version.setup_parser(subparsers)
+    commands.image_info.setup_parser(subparsers)
     commands.bootstatus.setup_parser(subparsers)
     commands.upload_boot.setup_parser(subparsers)
     commands.ufs_config.setup_parser(subparsers)

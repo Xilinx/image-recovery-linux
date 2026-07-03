@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
-"""Version command - reads version information from MTD devices"""
+"""Image-info command - reads image version information from MTD devices"""
 
 import os
 import struct
@@ -9,8 +9,8 @@ from .. import utils
 
 
 def setup_parser(subparsers):
-    """Setup argument parser for version command."""
-    parser = subparsers.add_parser('version', help='Show version information')
+    """Setup argument parser for image-info command."""
+    parser = subparsers.add_parser('image-info', help='Show image version information')
     parser.add_argument('--type', choices=['recovery', 'selector', 'bank-a', 'bank-b', 'all'],
                         default='all', help='Version type to query')
     parser.set_defaults(func=run)
@@ -138,7 +138,7 @@ def get_version(version_type):
 
 
 def run(args):
-    """Show version information from MTD devices"""
+    """Show image version information from MTD devices"""
 
     types_to_query = []
 

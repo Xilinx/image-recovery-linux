@@ -3,14 +3,14 @@
 
 """Command modules for image-mgmt tool"""
 
-from . import version
+from . import image_info
 from . import bootstatus
 from . import upload_boot
 from . import ufs_config
 from . import switch_bank
 
 __all__ = [
-    'version',
+    'image_info',
     'bootstatus',
     'upload_boot',
     'ufs_config',
