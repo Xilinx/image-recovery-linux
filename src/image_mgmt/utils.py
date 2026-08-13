@@ -288,6 +288,36 @@ EEPROM_DEVICE_PATTERN = "/sys/bus/i2c/devices/*/eeprom"
 
 # UFS device path pattern
 UFS_DEVICE_PATTERN = r'^/dev/bsg/ufs-bsg[0-9]+$'
+EEPROM_I2C_ADDRESS = '0054'
+
+
+def find_eeprom_devices():
+    """
+    Find all available I2C EEPROM devices on the system.
+    Searches for EEPROM at I2C address 0x0054 on all buses.
+
+    Returns:
+        list: List of EEPROM device paths (e.g., ['/sys/bus/i2c/devices/0-0054/eeprom'])
+              Empty list if no EEPROM devices found
+    """
+    import glob
+
+    i2c_base = '/sys/bus/i2c/devices'
+
+    if not os.path.exists(i2c_base):
+        return []
+
+    # Search for EEPROM at address 0x0054 on all I2C buses
+    pattern = f'{i2c_base}/*-{EEPROM_I2C_ADDRESS}/eeprom'
+    devices = glob.glob(pattern)
+
+    # Sort numerically by bus number to ensure correct ordering
+    # (lexicographic sort would put bus 10 before bus 2)
+    def extract_bus_number(path):
+        match = re.search(r'/(\d+)-\w+/eeprom$', path)
+        return int(match.group(1)) if match else 0
+
+    return sorted(devices, key=extract_bus_number)
 
 
 def find_ufs_devices():
@@ -305,8 +335,13 @@ def find_ufs_devices():
         device for device in ufs_devices
         if re.match(UFS_DEVICE_PATTERN, device)
     ]
-    # Sort to ensure consistent ordering
-    return sorted(valid_devices)
+    # Sort numerically by device number to ensure correct ordering
+    # (lexicographic sort would put ufs-bsg10 before ufs-bsg2)
+    def extract_device_number(path):
+        match = re.search(r'ufs-bsg(\d+)$', path)
+        return int(match.group(1)) if match else 0
+
+    return sorted(valid_devices, key=extract_device_number)
 
 
 def prompt_device_selection(devices: List[str], device_type: str) -> Optional[str]:

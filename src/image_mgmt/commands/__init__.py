@@ -8,6 +8,7 @@ from . import bootstatus
 from . import upload_boot
 from . import ufs_config
 from . import switch_bank
+from . import eeprom
 
 __all__ = [
     'image_info',
@@ -15,4 +16,5 @@ __all__ = [
     'upload_boot',
     'ufs_config',
     'switch_bank',
+    'eeprom',
 ]

@@ -40,6 +40,7 @@ def main():
     commands.upload_boot.setup_parser(subparsers)
     commands.ufs_config.setup_parser(subparsers)
     commands.switch_bank.setup_parser(subparsers)
+    commands.eeprom.setup_parser(subparsers)
 
     # Parse arguments
     args = parser.parse_args()
