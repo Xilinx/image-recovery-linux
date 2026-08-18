@@ -2,6 +2,10 @@
 # Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 echo "Content-type: application/json"
 echo ""
 
@@ -52,8 +56,12 @@ for dev in /dev/disk/by-path/* /dev/mmcblk* /dev/sd*; do
         devices_json="$devices_json,"
     fi
 
-    # Build JSON entry
-    devices_json="$devices_json{\"device\":\"$resolved\",\"bus\":\"$bus_type\",\"model\":\"${id_model:-unknown}\",\"serial\":\"${id_serial:-unknown}\",\"size\":${size:-0},\"devtype\":\"${devtype:-disk}\"}"
+    device=$(json_escape "$resolved")
+    bus=$(json_escape "$bus_type")
+    model=$(json_escape "${id_model:-unknown}")
+    serial=$(json_escape "${id_serial:-unknown}")
+    devtype=$(json_escape "${devtype:-disk}")
+    devices_json="$devices_json{\"device\":\"$device\",\"bus\":\"$bus\",\"model\":\"$model\",\"serial\":\"$serial\",\"size\":${size:-0},\"devtype\":\"$devtype\"}"
 done
 
 devices_json="$devices_json]"
