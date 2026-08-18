@@ -16,33 +16,26 @@ for dev in /dev/disk/by-path/*usb* /dev/sd*; do
 
     case "$BUS" in
         usb)
-            echo "$dev is USB storage"
             # Add to list if not already present
             if ! echo "$real_devs" | grep -q "$resolved_dev"; then
                 real_devs="$real_devs $resolved_dev"
             fi
             ;;
         mmc)
-            echo "$dev is SD/MMC card"
             ;;
         scsi)
             if echo "$ID_PATH" | grep -qi "ufs"; then
-                echo "$dev is UFS storage"
                 # Add to list if not already present
                 if ! echo "$real_devs" | grep -q "$resolved_dev"; then
                     real_devs="$real_devs $resolved_dev"
                 fi
-            else
-                echo "$dev is generic SCSI storage"
             fi
             ;;
         *)
-            echo "$dev: unknown device"
             ;;
     esac
 done
 
-echo "Detected devices: $real_devs"
 # Check if device was found
 if [ -z "$real_devs" ]; then
 	echo "Content-type: text/plain"
@@ -65,8 +58,6 @@ mounted_count=0
 
 # Process each unique device found
 for base_dev in $real_devs; do
-    echo "Processing device: $base_dev"
-
     # Get device name (e.g., sda from /dev/sda)
     dev_name=$(basename "$base_dev")
     dev_mount_dir="$USB_MOUNT_DIR/$dev_name"
@@ -74,26 +65,22 @@ for base_dev in $real_devs; do
     # Create device-specific mount directory
     if [ ! -d "$dev_mount_dir" ]; then
         if ! mkdir -p "$dev_mount_dir" 2>/dev/null; then
-            echo "Failed to create mount directory for $dev_name"
             continue
         fi
     fi
 
     # Check if this device is already mounted at this location
     if grep -q "$dev_mount_dir" /proc/mounts 2>/dev/null; then
-        echo "$dev_name already mounted at $dev_mount_dir"
         mounted_count=$((mounted_count + 1))
         continue
     fi
 
     # Try to mount the device directly
     if mount "$base_dev" "$dev_mount_dir" 2>/dev/null; then
-        echo "Mounted $base_dev to $dev_mount_dir"
         mounted_count=$((mounted_count + 1))
     else
         # Clean up mount directory if mount failed
         rmdir "$dev_mount_dir" 2>/dev/null
-        echo "Failed to mount $dev_name"
     fi
 done
 
