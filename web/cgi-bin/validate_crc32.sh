@@ -17,18 +17,8 @@ fi
 
 # Parse JSON to extract image name and expected CRC32
 # Format: {"ImageName":"filename","Crc32":value}
-IFS=":"
-set -- $json_data
-raw_img_nm="$2"
-raw_crc_val="$3"
-
-IFS=","
-set -- $raw_img_nm
-str_img_nm="$1"
-
-IFS="\""
-set -- $str_img_nm
-img_filename="$2"
+img_filename=$(printf '%s' "$json_data" | sed -n 's/.*"ImageName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+exp_crc32=$(printf '%s' "$json_data" | sed -n 's/.*"Crc32"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p')
 
 # Validate image filename
 if [ -z "$img_filename" ]; then
@@ -46,6 +36,14 @@ if [ ! -f "$img_filename" ]; then
 	exit 1
 fi
 
+# Validate expected CRC32 value
+if [ -z "$exp_crc32" ]; then
+	echo "Content-type: application/json"
+	echo ""
+	echo '{ "Status":"Fail", "Error":"Invalid CRC32 value" }'
+	exit 1
+fi
+
 # Calculate CRC32 of the file
 str_crc32=$(crc32 "$img_filename" 2>/dev/null)
 if [ -z "$str_crc32" ]; then
@@ -58,11 +56,6 @@ fi
 IFS=" "
 set -- $str_crc32
 cal_crc32=$((0x${1}))
-
-# Extract expected CRC32 value
-IFS="}"
-set -- $raw_crc_val
-exp_crc32="$1"
 
 # Validate numeric values
 if ! [ "$cal_crc32" -ge 0 ] 2>/dev/null || ! [ "$exp_crc32" -ge 0 ] 2>/dev/null; then
