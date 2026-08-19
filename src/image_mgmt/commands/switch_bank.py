@@ -32,10 +32,10 @@ def update_metadata(metadata_file, target_bank):
     target_status = utils.get_bank_status(metadata, target_bank)
     utils.info_msg(f"Target bank status: 0x{target_status:02x}")
 
-    # Bank status: 0xfc = healthy, 0xfd = warning, 0xfe = critical
-    if target_status not in [0xfc, 0xfd]:
+    # Bank status: 0xfc = Accepted (all images valid), 0xfe = Valid (some images unaccepted), 0xff = Invalid
+    if target_status not in [0xfc, 0xfe]:
         raise RuntimeError(
-            f"Target bank status is unhealthy (0x{target_status:02x})."
+            f"Target bank status is unhealthy (0x{target_status:02x}). Cannot switch to a non-bootable bank."
         )
 
     # Determine current active bank

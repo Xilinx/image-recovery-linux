@@ -104,9 +104,19 @@ def get_boot_status() -> Dict[str, Any]:
         active_bank = utils.hexdump_value(metadata, offset=0x8, length=4, format_type='int')
         prev_active_bank = utils.hexdump_value(metadata, offset=0xC, length=4, format_type='int')
 
+        def get_bank_status_str(status_hex):
+            if status_hex == 'fc':
+                return 'Bootable (Accepted - All images valid)'
+            elif status_hex == 'fe':
+                return 'Bootable (Valid - Some images unaccepted)'
+            elif status_hex == 'ff':
+                return 'Non-bootable (Invalid - One or more images corrupted or partially overwritten)'
+            else:
+                return 'Non-bootable (Unknown status)'
+
         return {
-            'bank_a_status': 'Bootable (Valid boot.bin)' if bank_a_status == 'fc' else 'Non-bootable (No valid boot.bin)',
-            'bank_b_status': 'Bootable (Valid boot.bin)' if bank_b_status == 'fc' else 'Non-bootable (No valid boot.bin)',
+            'bank_a_status': get_bank_status_str(bank_a_status),
+            'bank_b_status': get_bank_status_str(bank_b_status),
             'active_bank': 'A' if active_bank == 0 else 'B',
             'previous_bank': 'A' if prev_active_bank == 0 else 'B'
         }
