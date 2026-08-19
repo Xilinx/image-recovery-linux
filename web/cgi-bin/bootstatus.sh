@@ -33,14 +33,16 @@ active_bank=$(hexdump -s 0x8 -n4 -e '"%x"' "$metadata_file")
 prev_active_bank=$(hexdump -s 0xC -n4 -e '"%x"' "$metadata_file")
 
 # Determine bank A status
-if [ "$bankA_status" = "fc" ]; then
+# 0xfc = Accepted (all images valid), 0xfe = Valid (some images unaccepted), 0xff = Invalid
+if [ "$bankA_status" = "fc" ] || [ "$bankA_status" = "fe" ]; then
 	bankA_st=true
 else
 	bankA_st=false
 fi
 
 # Determine bank B status
-if [ "$bankB_status" = "fc" ]; then
+# 0xfc = Accepted (all images valid), 0xfe = Valid (some images unaccepted), 0xff = Invalid
+if [ "$bankB_status" = "fc" ] || [ "$bankB_status" = "fe" ]; then
 	bankB_st=true
 else
 	bankB_st=false
