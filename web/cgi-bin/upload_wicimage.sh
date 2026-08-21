@@ -25,6 +25,28 @@ fi
 # Only set trap to clean up temp file, not uploaded files
 trap 'rm -f "$CGIBASHOPTS_TMP"; [ "$LOGGING_ENABLED" = "1" ] && log_finalize "$FINAL_STATUS" "$FINAL_MESSAGE"' EXIT
 
+sanitize_filename() {
+	local input_name="$1"
+	local base_name
+
+	base_name=$(basename -- "$input_name" 2>/dev/null)
+
+	case "$base_name" in
+		""|"."|"..")
+			log_error "Invalid filename: empty or directory reference"
+			return 1
+			;;
+		*)
+			if [ "${#base_name}" -gt 255 ]; then
+				log_error "Filename too long: ${#base_name} characters (max 255)"
+				return 1
+			fi
+			printf '%s' "$base_name"
+			return 0
+			;;
+	esac
+}
+
 if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 	# Get custom headers from HTTP request
 	upload_type="${HTTP_X_UPLOAD_TYPE:-}"
@@ -44,16 +66,29 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		fi
 		log_banner "ETHERNET RECOVERY - WIC MAIN FILE UPLOAD"
 		log_info "=== WIC Main File Upload Started ==="
-		log_info "Filename: $filename"
+		log_info "Raw filename from client: $filename"
+
+		safe_filename=$(sanitize_filename "$filename")
+		if [ $? -ne 0 ] || [ -z "$safe_filename" ]; then
+			log_error "Invalid or malicious filename detected: $filename"
+			FINAL_STATUS="FAIL"
+			FINAL_MESSAGE="Invalid filename"
+			echo "UPLOAD_STATUS=FAIL"
+			echo "UPLOAD_REASON=Invalid filename - path traversal not allowed"
+			echo "</pre></body></html>"
+			exit 1
+		fi
+		log_info "Sanitized filename: $safe_filename"
+
 		# Save main file (Ethernet upload)
-		saved_file="$CGIBASHOPTS_DIR/$filename"
+		saved_file="$CGIBASHOPTS_DIR/$safe_filename"
 		log_info "Receiving WIC file via HTTP POST"
 		log_info "Target path: $saved_file"
 
 		if cat > "$saved_file"; then
 			log_success "WIC main file uploaded successfully"
 			FINAL_STATUS="SUCCESS"
-			FINAL_MESSAGE="WIC file uploaded: $filename"
+			FINAL_MESSAGE="WIC file uploaded: $safe_filename"
 			echo "UPLOAD_STATUS=SUCCESS"
 		else
 			log_error "Failed to save WIC file"
@@ -71,15 +106,28 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		fi
 		log_banner "ETHERNET RECOVERY - WIC BMAP FILE UPLOAD"
 		log_info "=== WIC BMAP File Upload Started ==="
-		log_info "Filename: $filename"
+		log_info "Raw filename from client: $filename"
+
+		safe_filename=$(sanitize_filename "$filename")
+		if [ $? -ne 0 ] || [ -z "$safe_filename" ]; then
+			log_error "Invalid or malicious filename detected: $filename"
+			FINAL_STATUS="FAIL"
+			FINAL_MESSAGE="Invalid filename"
+			echo "UPLOAD_STATUS=FAIL"
+			echo "UPLOAD_REASON=Invalid filename - path traversal not allowed"
+			echo "</pre></body></html>"
+			exit 1
+		fi
+		log_info "Sanitized filename: $safe_filename"
+
 		# Save bmap file (Ethernet upload)
-		saved_file="$CGIBASHOPTS_DIR/$filename"
+		saved_file="$CGIBASHOPTS_DIR/$safe_filename"
 		log_info "Receiving BMAP file via HTTP POST"
 		log_info "Target path: $saved_file"
 		if cat > "$saved_file"; then
 			log_success "BMAP file uploaded successfully"
 			FINAL_STATUS="SUCCESS"
-			FINAL_MESSAGE="BMAP file uploaded: $filename"
+			FINAL_MESSAGE="BMAP file uploaded: $safe_filename"
 			echo "UPLOAD_STATUS=SUCCESS"
 		else
 			log_error "Failed to save BMAP file"
@@ -155,19 +203,42 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		fi
 		log_banner "WIC IMAGE FLASH OPERATION"
 		log_info "=== WIC Image Flash Operation Started ==="
-		log_info "Main filename: $main_filename"
-		log_info "BMAP filename: $bmap_filename"
+		log_info "Raw main filename: $main_filename"
+		log_info "Raw BMAP filename: $bmap_filename"
 		log_info "Target device: $target_device"
 		echo "FLASH_PROGRESS=10"
 		log_progress "Flash initialized (10%)"
 
 		# Construct full paths
 		if [ -n "$main_filename" ]; then
-			# Ethernet upload - use uploaded file
-			main_file="$CGIBASHOPTS_DIR/$main_filename"
+			# Ethernet upload - sanitize and use uploaded file
+			safe_main_filename=$(sanitize_filename "$main_filename")
+			if [ $? -ne 0 ] || [ -z "$safe_main_filename" ]; then
+				log_error "Invalid or malicious main filename: $main_filename"
+				FINAL_STATUS="FAIL"
+				FINAL_MESSAGE="Invalid main filename"
+				echo "FLASH_STATUS=FAIL"
+				echo "FLASH_REASON=Invalid filename - path traversal not allowed"
+				echo "</pre></body></html>"
+				exit 1
+			fi
+			log_info "Sanitized main filename: $safe_main_filename"
+			main_file="$CGIBASHOPTS_DIR/$safe_main_filename"
 			log_info "Using Ethernet uploaded WIC file: $main_file"
+
 			if [ -n "$bmap_filename" ]; then
-				bmap_file="$CGIBASHOPTS_DIR/$bmap_filename"
+				safe_bmap_filename=$(sanitize_filename "$bmap_filename")
+				if [ $? -ne 0 ] || [ -z "$safe_bmap_filename" ]; then
+					log_error "Invalid or malicious BMAP filename: $bmap_filename"
+					FINAL_STATUS="FAIL"
+					FINAL_MESSAGE="Invalid BMAP filename"
+					echo "FLASH_STATUS=FAIL"
+					echo "FLASH_REASON=Invalid filename - path traversal not allowed"
+					echo "</pre></body></html>"
+					exit 1
+				fi
+				log_info "Sanitized BMAP filename: $safe_bmap_filename"
+				bmap_file="$CGIBASHOPTS_DIR/$safe_bmap_filename"
 				log_info "Using Ethernet uploaded BMAP: $bmap_file"
 			fi
 			# Clean up uploaded files after flashing (success or failure)
