@@ -2,6 +2,9 @@
 # Copyright (c) 2025 - 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
+# Enable pipefail to catch errors in pipelines.
+set -o pipefail
+
 echo "Content-type: text/html"
 echo ""
 echo "<html><body><pre>"
@@ -29,6 +32,28 @@ fi
 # Only set trap to clean up temp file and metadata, not uploaded files initially
 trap 'rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE"; [ "$LOGGING_ENABLED" = "1" ] && log_finalize "$FINAL_STATUS" "$FINAL_MESSAGE"' EXIT
 
+sanitize_filename() {
+	local input_name="$1"
+	local base_name
+
+	base_name=$(basename -- "$input_name" 2>/dev/null)
+
+	case "$base_name" in
+		""|"."|"..")
+			log_error "Invalid filename: empty or directory reference"
+			return 1
+			;;
+		*)
+			if [ "${#base_name}" -gt 255 ]; then
+				log_error "Filename too long: ${#base_name} characters (max 255)"
+				return 1
+			fi
+			printf '%s' "$base_name"
+			return 0
+			;;
+	esac
+}
+
 if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 	# Get custom headers from HTTP request
 	upload_type="${HTTP_X_UPLOAD_TYPE:-}"
@@ -46,17 +71,29 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		fi
 		log_banner "ETHERNET RECOVERY - BOOT FILE UPLOAD"
 		log_info "=== Boot File Upload Started ==="
-		log_info "Filename: $filename"
+		log_info "Raw filename from client: $filename"
+
+		safe_filename=$(sanitize_filename "$filename")
+		if [ $? -ne 0 ] || [ -z "$safe_filename" ]; then
+			log_error "Invalid or malicious filename detected: $filename"
+			FINAL_STATUS="FAIL"
+			FINAL_MESSAGE="Invalid filename"
+			echo "UPLOAD_STATUS=FAIL"
+			echo "UPLOAD_REASON=Invalid filename - path traversal not allowed"
+			echo "</pre></body></html>"
+			exit 1
+		fi
+		log_info "Sanitized filename: $safe_filename"
 
 		# Save boot file (Ethernet upload)
-		saved_file="$CGIBASHOPTS_DIR/$filename"
+		saved_file="$CGIBASHOPTS_DIR/$safe_filename"
 		log_info "Receiving file via HTTP POST"
 		log_info "Target path: $saved_file"
 
 		if cat > "$saved_file"; then
 			log_success "Boot file uploaded successfully"
 			FINAL_STATUS="SUCCESS"
-			FINAL_MESSAGE="Boot file uploaded: $filename"
+			FINAL_MESSAGE="Boot file uploaded: $safe_filename"
 			echo "UPLOAD_STATUS=SUCCESS"
 		else
 			log_error "Failed to save uploaded file"
@@ -116,12 +153,23 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		fi
 		log_banner "BOOT IMAGE FLASH OPERATION"
 		log_info "=== Boot Image Flash Operation Started ==="
-		log_info "Boot filename from header: $boot_filename"
+		log_info "Raw boot filename from header: $boot_filename"
 
 		# Construct full path
 		if [ -n "$boot_filename" ]; then
-			# Ethernet upload - use uploaded file
-			file_path="$CGIBASHOPTS_DIR/$boot_filename"
+			# Ethernet upload - sanitize and use uploaded file
+			safe_boot_filename=$(sanitize_filename "$boot_filename")
+			if [ $? -ne 0 ] || [ -z "$safe_boot_filename" ]; then
+				log_error "Invalid or malicious boot filename: $boot_filename"
+				FINAL_STATUS="FAIL"
+				FINAL_MESSAGE="Invalid boot filename"
+				echo "FLASH_STATUS=FAIL"
+				echo "FLASH_REASON=Invalid filename - path traversal not allowed"
+				echo "</pre></body></html>"
+				exit 1
+			fi
+			log_info "Sanitized boot filename: $safe_boot_filename"
+			file_path="$CGIBASHOPTS_DIR/$safe_boot_filename"
 			log_info "Using Ethernet uploaded file: $file_path"
 			# Clean up uploaded files after flashing
 			trap 'rm -f "$CGIBASHOPTS_TMP" "$METADATA_FILE" "$file_path" "$USB_PATH_FILE"; [ "$LOGGING_ENABLED" = "1" ] && log_finalize "$FINAL_STATUS" "$FINAL_MESSAGE"' EXIT
