@@ -916,7 +916,6 @@ class UploadManager {
         const isUSB = typeof file === 'string';
         const isWic = type === 'wic';
         const scriptUrl = `cgi-bin/upload_${type === 'boot' ? 'bootbin' : 'wicimage'}.sh`;
-        const validate = type === 'boot';
         const fileName = isUSB ? file.split('/').pop() : file.name;
         const prefix = `${isUSB ? 'usb-' : ''}${type}`;
         const getElement = (suffix) => document.getElementById(`${prefix}${suffix}`);
@@ -1059,35 +1058,12 @@ class UploadManager {
                             ...(logFile && { 'Log File': logFile })
                         };
 
-                        if (validate) {
-                            this.progressBar.setMessage(prefix, 'Verifying CRC32...');
-
-                            this.systemInfo.fetchJSON('cgi-bin/validate_crc32.sh', 'CRC32 validation')
-                                .then((validationData) => {
-                                    if (validationData) {
-                                        this.systemInfo.fetchBootStatus();
-                                        this.modal.showModal('Upload Successful', details, true, isUSB, (resetUSB) => {
-                                            if (resetUSB && config.onReset) config.onReset();
-                                        });
-                                        resetUpload(config.fileHandler);
-                                    } else {
-                                        this.modal.showModal('Validation Failed', {
-                                            'Status': 'Upload completed but CRC32 validation failed',
-                                            'Action': 'Please try uploading again'
-                                        }, false, isUSB);
-                                        if (uploadBtn) {
-                                            uploadBtn.disabled = false;
-                                            uploadBtn.textContent = 'Upload';
-                                        }
-                                        this.progressBar.reset(prefix);
-                                    }
-                                });
-                        } else {
-                            this.modal.showModal('Upload Successful', details, true, isUSB, (resetUSB) => {
-                                if (resetUSB && config.onReset) config.onReset();
-                            });
-                            resetUpload(config.fileHandler);
-                        }
+                        // Backend already validates CRC during flash operation (cal_crc32.sh)
+                        this.systemInfo.fetchBootStatus();
+                        this.modal.showModal('Upload Successful', details, true, isUSB, (resetUSB) => {
+                            if (resetUSB && config.onReset) config.onReset();
+                        });
+                        resetUpload(config.fileHandler);
                     } else {
                         this.handleFailure('Upload Failed', {
                             'Status': status,
