@@ -61,7 +61,10 @@ BOOT_HEADER_OFFSETS = [
     (0x10, 0x14),  # Versal/versal_2ve_2vm : (sync_offset, xnlx_offset)
 ]
 
-OPT_DATA_ID_VERSION = 0x21             # Optional data ID for version string
+OPT_DATA_ID_DESCRIPTION = 0x21         # Component description
+OPT_DATA_ID_VERSION = 0x22             # Component/application version
+OPT_DATA_ID_TOOLS_VERSION = 0x23       # Xilinx tools release version
+OPT_DATA_ID_LEGACY_VERSION = 0x21      # Version ID used by older images
 MAX_VERSION_LENGTH = 128               # Maximum version string length
 VERSION_STRING_OFFSET = 0x70
 VERSION_STRING_SIZE = 0x24

@@ -17,9 +17,9 @@ def setup_parser(subparsers):
     return parser
 
 
-def extract_bootgen_version(device_path, platform='default'):
+def extract_bootgen_version(device_path, platform='default', target_id=None):
     """
-    Extract version string from bootgen optional data fields.
+    Extract a version string from Bootgen optional data fields.
     Platform is auto-detected from /proc/device-tree/family.
     """
     try:
@@ -42,7 +42,9 @@ def extract_bootgen_version(device_path, platform='default'):
         # Step 3: Read optional data section (read up to 2KB)
         opt_data = utils.read_binary_file(device_path, opt_data_offset, 2048)
 
-        # Step 4: Search for optional data ID 0x21 (version string)
+        # Step 4: Search for the requested optional-data ID.
+        target_id = target_id if target_id is not None else utils.OPT_DATA_ID_VERSION
+        legacy_version = None
         offset = 0
         while offset < len(opt_data) - 4:
             # Read optional data header (4 bytes: 2-byte ID + 2-byte length)
@@ -55,8 +57,9 @@ def extract_bootgen_version(device_path, platform='default'):
             if length_bytes < 4 or length_bytes > 2048:
                 break
 
-            # Check if this is the version string entry
-            if data_id == utils.OPT_DATA_ID_VERSION:
+            # Extract textual values for the requested entry and retain 0x21
+            # as a fallback for images built with the legacy metadata layout.
+            if data_id in (target_id, utils.OPT_DATA_ID_LEGACY_VERSION):
                 # Version string starts 4 bytes after header
                 version_start = offset + 4
                 version_end = version_start + min(utils.MAX_VERSION_LENGTH, length_bytes - 4)
@@ -74,13 +77,16 @@ def extract_bootgen_version(device_path, platform='default'):
                 # Remove any non-printable characters
                 version_str = ''.join(c for c in version_str if c.isprintable())
 
-                return utils.clean_version_metadata(version_str)
+                version_str = utils.clean_version_metadata(version_str)
+                if data_id == target_id:
+                    return version_str
+                legacy_version = version_str
 
             # Move to next optional data entry
             # Length includes the header, so just add length_bytes
             offset += length_bytes
 
-        return None
+        return legacy_version
 
     except Exception as e:
         utils.error_msg(f"Failed to extract bootgen version from {device_path}: {e}")
@@ -111,6 +117,20 @@ def get_version(version_type):
     else:
         return (f"Error: Unknown version type: {version_type}", None)
 
+    if platform != 'zynqmp' and version_type in ('recovery', 'selector'):
+        try:
+            active_bank = utils.get_active_bank(utils.read_metadata())
+            if active_bank == 0:
+                device = utils.MTD_BANK_A
+            elif active_bank == 1:
+                device = utils.MTD_BANK_B
+            else:
+                utils.error_msg(f"Invalid active bank value: {active_bank}")
+                return (label, "Not Available")
+        except Exception as e:
+            utils.error_msg(f"Failed to determine active bank: {e}")
+            return (label, "Not Available")
+
     # Check if device exists
     if not os.path.exists(device):
         return (label, "Not Available")
@@ -120,8 +140,17 @@ def get_version(version_type):
     if platform == 'zynqmp':
         version = utils.extract_version_from_offset(device)
     else:
-        # Modern platforms: use optional data extraction
-        version = extract_bootgen_version(device, platform)
+        # Modern platform metadata mapping:
+        #   Bank A/B: 0x21 description
+        #   Selector: 0x22 component version
+        #   Recovery: 0x23 tools/release version
+        optional_data_id = {
+            'recovery': utils.OPT_DATA_ID_TOOLS_VERSION,
+            'selector': utils.OPT_DATA_ID_VERSION,
+            'bank-a': utils.OPT_DATA_ID_DESCRIPTION,
+            'bank-b': utils.OPT_DATA_ID_DESCRIPTION,
+        }[version_type]
+        version = extract_bootgen_version(device, platform, optional_data_id)
 
     if not version:
         try:
