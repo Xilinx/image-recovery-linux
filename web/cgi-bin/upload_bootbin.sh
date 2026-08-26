@@ -252,6 +252,62 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 	fi
 
 	log_success "Boot file validation passed"
+	log_info "Checking hardware compatibility"
+
+	if [ -f "/proc/device-tree/device_id" ]; then
+		current_device_id=$(cat /proc/device-tree/device_id 2>/dev/null | tr -d '\0' | tr '[:upper:]' '[:lower:]')
+		log_info "Current device ID: $current_device_id"
+
+		if [ -n "$current_device_id" ]; then
+			boot_device_ids=$(strings "$file_path" | grep -ioE 'xc(2ve|2vp|ve|vr|vm|k|zu)[0-9]+[a-z]*' | tr '[:upper:]' '[:lower:]' | sort -u | tr '\n' ' ')
+
+			if [ -n "$boot_device_ids" ]; then
+				log_info "Boot.bin device ID(s): $boot_device_ids"
+			else
+				log_error "Could not extract device ID from boot.bin"
+				FINAL_STATUS="FAIL"
+				FINAL_MESSAGE="Cannot verify hardware compatibility"
+				echo "FLASH_STATUS=FAIL"
+				echo "FLASH_REASON=Cannot verify hardware compatibility: Could not extract device ID from boot.bin. Boot.bin may be corrupted or built without device metadata."
+				echo "</pre></body></html>"
+				exit 1
+			fi
+
+			# Check if current device ID matches any device ID in boot.bin
+			# This ensures exact device matching (e.g., xck24 only on xck24, not on xck26)
+
+			is_compatible=0
+			for boot_id in $boot_device_ids; do
+				if [ "$current_device_id" = "$boot_id" ]; then
+					is_compatible=1
+					log_success "Hardware compatibility check passed: $current_device_id matches boot.bin device ID"
+					break
+				fi
+			done
+
+			if [ "$is_compatible" -eq 0 ]; then
+				# Determine device families for error message
+				current_family=""
+				case "$current_device_id" in
+					xc2ve*|xc2vp*) current_family="versal-2ve-2vm" ;;
+					xcve*|xcvr*|xcvm*) current_family="versal" ;;
+					xck*|xczu*) current_family="zynqmp" ;;
+				esac
+
+				log_error "Hardware compatibility mismatch: Current device is '$current_device_id', but boot.bin is for '$boot_device_ids'"
+				FINAL_STATUS="FAIL"
+				FINAL_MESSAGE="Hardware compatibility mismatch"
+				echo "FLASH_STATUS=FAIL"
+				echo "FLASH_REASON=Hardware compatibility mismatch: Current device is '$current_device_id' ($current_family), but boot.bin is for '$boot_device_ids'. This boot.bin cannot be flashed on this hardware."
+				echo "</pre></body></html>"
+				exit 1
+			fi
+		else
+			log_warning "Could not read device ID from /proc/device-tree/device_id, skipping hardware compatibility check"
+		fi
+	else
+		log_warning "/proc/device-tree/device_id not found, skipping hardware compatibility check"
+	fi
 
 	# Read current active bank from metadata
 	log_info "Reading metadata from /dev/mtd5"
