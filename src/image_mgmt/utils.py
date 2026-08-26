@@ -144,9 +144,154 @@ def _has_valid_boot_header(f) -> bool:
     return False
 
 
+def get_current_device_id() -> Optional[str]:
+    """
+    Read the device ID from /proc/device-tree/device_id.
+
+    Returns:
+        str: Device ID (e.g., 'xck24', 'xcve2802', 'xc2ve3858') or None if not found
+    """
+    try:
+        with open('/proc/device-tree/device_id', 'r') as f:
+            device_id = f.read().strip().rstrip('\x00').lower()
+            return device_id if device_id else None
+    except (FileNotFoundError, PermissionError, IOError):
+        return None
+
+
+def extract_device_id_from_boot_bin(file_path: str) -> List[str]:
+    """
+    Extract device identifiers from boot.bin file by searching for device ID patterns.
+
+    Args:
+        file_path: Path to the boot.bin file
+
+    Returns:
+        List of device IDs found in the boot.bin (e.g., ['xck24', 'xck26'])
+    """
+    device_ids = []
+    device_id_patterns = [
+        # Versal 2 family
+        r'xc2ve\d+[a-z]*',    # e.g., xc2ve3858
+        r'xc2vp\d+[a-z]*',    # e.g., xc2vp3602
+        # Versal family
+        r'xcve\d+[a-z]*',     # e.g., xcve2802
+        r'xcvr\d+[a-z]*',     # e.g., xcvr1602, xcvr1652
+        r'xcvm\d+[a-z]*',     # e.g., xcvm1802
+        # ZynqMP family
+        r'xck\d+[a-z]*',      # e.g., xck24, xck26
+        r'xczu\d+[a-z]*',     # e.g., xczu7ev, xczu9eg
+    ]
+
+    try:
+        with open(file_path, 'rb') as f:
+            # Read the boot.bin file
+            data = f.read()
+
+        # Extract printable strings from the binary
+        strings_list = extract_strings(data)
+
+        # Search for device ID patterns in strings
+        for string in strings_list:
+            string_lower = string.lower()
+            for pattern in device_id_patterns:
+                matches = re.findall(pattern, string_lower)
+                for match in matches:
+                    if match not in device_ids:
+                        device_ids.append(match)
+
+    except Exception as e:
+        error_msg(f"Failed to extract device ID from boot.bin: {e}")
+
+    return device_ids
+
+
+def get_device_family(device_id: str) -> Optional[str]:
+    """
+    Determine the device family from a device ID.
+
+    Args:
+        device_id: Device ID string (e.g., 'xck24', 'xcve2802')
+
+    Returns:
+        str: Device family ('zynqmp', 'versal', 'versal-2ve-2vm') or None
+    """
+    if not device_id:
+        return None
+
+    device_id_lower = device_id.lower()
+
+    if device_id_lower.startswith('xc2ve') or \
+       device_id_lower.startswith('xc2vp'):
+        return 'versal-2ve-2vm'
+
+    if device_id_lower.startswith('xcve') or \
+       device_id_lower.startswith('xcvr') or \
+       device_id_lower.startswith('xcvm'):
+        return 'versal'
+
+    if device_id_lower.startswith('xck') or \
+       device_id_lower.startswith('xczu'):
+        return 'zynqmp'
+
+    return None
+
+
+def check_hardware_compatibility(file_path: str) -> Tuple[bool, Optional[str]]:
+    """
+    Check if the boot.bin file is compatible with the current hardware platform.
+    Performs exact device ID matching - boot.bin must be built for the specific
+    hardware device.
+
+    Args:
+        file_path: Path to the boot.bin file
+
+    Returns:
+        tuple: (is_compatible, error_message) - error_message is None if compatible
+    """
+    current_device_id = get_current_device_id()
+
+    if not current_device_id:
+        warning_msg(
+            "Could not read device ID from /proc/device-tree/device_id, "
+            "skipping hardware compatibility check"
+        )
+        return True, None
+
+    boot_device_ids = extract_device_id_from_boot_bin(file_path)
+
+    if not boot_device_ids:
+        return False, (
+            "Cannot verify hardware compatibility: "
+            "Could not extract device ID from boot.bin. "
+            "Boot.bin may be corrupted or built without device metadata."
+        )
+
+    if current_device_id in boot_device_ids:
+        info_msg(
+            f"Hardware compatibility check passed: {current_device_id} "
+            f"matches boot.bin device ID"
+        )
+        return True, None
+
+    # Device ID mismatch - provide detailed error
+    current_family = get_device_family(current_device_id)
+    boot_families = [get_device_family(dev_id) for dev_id in boot_device_ids]
+    boot_families_unique = ', '.join(sorted(set([f for f in boot_families if f])))
+    boot_ids_str = ', '.join(boot_device_ids)
+
+    return False, (
+        f"Hardware compatibility mismatch: "
+        f"Current device is '{current_device_id}' ({current_family}), "
+        f"but boot.bin is for '{boot_ids_str}' ({boot_families_unique}). "
+        f"This boot.bin cannot be flashed on this hardware - it may corrupt the boot process."
+    )
+
+
 def validate_boot_bin(file_path: str) -> Tuple[bool, Optional[str]]:
     """
-    Validate if a file is a valid boot.bin by checking for Xilinx boot header.
+    Validate if a file is a valid boot.bin by checking for Xilinx boot header
+    and hardware compatibility.
     Supports both ZynqMP and Versal/versal_2ve_2vm  header formats.
 
     Args:
@@ -162,11 +307,20 @@ def validate_boot_bin(file_path: str) -> Tuple[bool, Optional[str]]:
             return False, "File too small to be a valid boot.bin (minimum 40 bytes required)"
 
         with open(file_path, 'rb') as f:
-            if _has_valid_boot_header(f):
-                return True, None
+            if not _has_valid_boot_header(f):
+                # No valid pattern found
+                return False, (
+                    "Invalid boot.bin, boot.bin was corrupted boot image"
+                )
 
-            # No valid pattern found
-            return False, "Invalid boot.bin, boot.bin was corrupted boot image"
+        # Check hardware compatibility
+        is_compatible, compatibility_error = check_hardware_compatibility(
+            file_path
+        )
+        if not is_compatible:
+            return False, compatibility_error
+
+        return True, None
 
     except Exception as e:
         return False, f"Failed to validate boot.bin: {e}"
