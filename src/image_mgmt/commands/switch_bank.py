@@ -131,6 +131,13 @@ def run(args):
             # Calculate CRC32 and flash to both metadata partitions
             utils.calculate_and_update_crc32(metadata_file)
 
+            # Temporary workaround for ZynqMP multiboot register issue
+            # Clear multiboot register for clean boot
+            try:
+                utils.clear_multiboot_register()
+            except RuntimeError as e:
+                utils.warning_msg(f"Failed to clear multiboot register: {e}")
+
             print("\n" + "="*60)
             utils.success_msg(f"Active bank switched to {target_name}")
             utils.warning_msg(f"{target_name} will boot on next reboot")
