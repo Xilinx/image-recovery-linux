@@ -110,6 +110,35 @@ def check_root_privileges() -> bool:
     return os.geteuid() == 0
 
 
+# Temporary workaround for ZynqMP multiboot register issue
+def clear_multiboot_register() -> bool:
+    """
+    Clear the ZynqMP multiboot register by writing to firmware configuration register.
+
+    Writes to address 0xffca0010 with mask 0xfffffff and value 0x0.
+    This clears the multiboot register values.
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    config_reg_path = '/sys/firmware/zynqmp/config_reg'
+
+    if not os.path.exists(config_reg_path):
+        return False
+
+    # Write configuration: address mask value
+    # Address: 0xffca0010 (multiboot register)
+    # Mask: 0xfffffff (bits to modify)
+    # Value: 0x0 (clear the register)
+    config_data = "0xffca0010 0xfffffff 0x0\n"
+
+    with open(config_reg_path, 'w') as f:
+        f.write(config_data)
+
+    info_msg("Multiboot register cleared successfully")
+    return True
+
+
 def _has_valid_boot_header(f) -> bool:
     """
     Check if an open file object contains a valid Xilinx boot header.
