@@ -179,6 +179,13 @@ def run(args):
             utils.progress_msg(90, "Calculating and updating CRC32...")
             utils.calculate_and_update_crc32(metadata_file)
 
+            # Temporary workaround for ZynqMP multiboot register issue
+            # Clear multiboot register for clean boot
+            try:
+                utils.clear_multiboot_register()
+            except RuntimeError as e:
+                utils.warning_msg(f"Failed to clear multiboot register: {e}")
+
             # Extract version and build date
             version_info = extract_version_info(args.file)
             build_date = extract_build_date(args.file)
