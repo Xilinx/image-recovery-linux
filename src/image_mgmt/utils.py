@@ -123,6 +123,10 @@ def clear_multiboot_register() -> bool:
     """
     config_reg_path = '/sys/firmware/zynqmp/config_reg'
 
+    # Multiboot register clearing via PMU config_reg is only applicable to ZynqMP
+    if detect_platform() != 'zynqmp':
+        return False
+
     if not os.path.exists(config_reg_path):
         return False
 
@@ -132,8 +136,12 @@ def clear_multiboot_register() -> bool:
     # Value: 0x0 (clear the register)
     config_data = "0xffca0010 0xfffffff 0x0\n"
 
-    with open(config_reg_path, 'w') as f:
-        f.write(config_data)
+    try:
+        with open(config_reg_path, 'w') as f:
+            f.write(config_data)
+    except OSError as e:
+        warning_msg(f"Failed to clear multiboot register: {e}")
+        return False
 
     info_msg("Multiboot register cleared successfully")
     return True
