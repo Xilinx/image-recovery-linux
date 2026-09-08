@@ -11,7 +11,9 @@
 IHT_OFFSET_DEFAULT=196                  # 0xC4 - Image Header Table offset (default: Versal/ZynqMP)
 IHT_OFFSET_VERSAL_2VE_2VM=720          # 0x2D0 - Image Header Table offset for Versal_2VE_2VM
 XIH_IHT_LEN=128                        # 0x80 - Image Header Table length
-OPT_DATA_ID_VERSION=33                 # 0x21 - Optional data ID for version string
+OPT_DATA_ID_DESCRIPTION=33             # 0x21 - Component description
+OPT_DATA_ID_VERSION=34                 # 0x22 - Component/application version
+OPT_DATA_ID_TOOLS_VERSION=35           # 0x23 - Xilinx tools release version
 MAX_VERSION_LENGTH=128                 # Maximum version string length
 
 # Get MTD device path by partition name
@@ -65,6 +67,7 @@ detect_platform() {
 # Extract version string from bootgen optional data fields
 extract_bootgen_version() {
 	local device="$1"
+	local target_id="$2"
 	local platform
 	local iht_offset_addr
 	local iht_bytes
@@ -106,7 +109,7 @@ extract_bootgen_version() {
 		return 1
 	fi
 
-	# Step 4: Search for optional data ID 0x21 (version string)
+	# Step 4: Search for the requested optional data ID
 	offset=0
 	while [ $offset -lt 2044 ]; do
 		# Read optional data header (4 bytes: 2-byte ID + 2-byte length)
@@ -124,8 +127,8 @@ extract_bootgen_version() {
 			break
 		fi
 
-		# Check if this is the version string entry
-		if [ "$data_id" -eq "$OPT_DATA_ID_VERSION" ]; then
+		# Check if this is the requested version metadata entry
+		if [ "$data_id" -eq "$target_id" ]; then
 			# Version string starts 4 bytes after header
 			version_start=$((offset + 4))
 			version_end=$((version_start + MAX_VERSION_LENGTH))
@@ -140,7 +143,7 @@ extract_bootgen_version() {
 
 			# Extract version string
 			version_str=$(dd if="$opt_data_file" bs=1 skip=$version_start count=$((version_end - version_start)) 2>/dev/null | \
-				strings | awk 'NR==1 {print; exit}')
+				tr '\000' '\n' | awk 'NR==1 {print; exit}')
 
 			if [ -n "$version_str" ]; then
 				echo "$version_str"
@@ -165,16 +168,22 @@ get_version() {
 	local device
 	local partition_name
 	local version
+	local description
+	local component_version
+	local tools_version
+	local is_application=0
 
 	# Determine device and label based on type
 	case "$type" in
 		recovery)
 			partition_name="Image Recovery"
 			label="Image Recovery Application"
+			is_application=1
 			;;
 		selector)
 			partition_name="Image Selector"
 			label="Image Selector Application"
+			is_application=1
 			;;
 		bank-a)
 			partition_name="Bank A Space"
@@ -203,8 +212,17 @@ get_version() {
 		return 1
 	fi
 
-	# Extract version from bootgen optional data
-	version=$(extract_bootgen_version "$device")
+	# Application images expose description, component, and tools versions separately.
+	if [ "$is_application" -eq 1 ]; then
+		description=$(extract_bootgen_version "$device" "$OPT_DATA_ID_DESCRIPTION")
+		component_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_VERSION")
+		component_version=$(printf '%s' "$component_version" | sed 's/+git//g')
+		tools_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_TOOLS_VERSION")
+		version=$(printf '%s\n%s\n%s\n' "$description" "$component_version" "$tools_version" | \
+			awk 'NF { if (result) result = result "-" $0; else result = $0 } END { print result }')
+	else
+		version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_DESCRIPTION")
+	fi
 
 	if [ -n "$version" ]; then
 		echo "$label: $version"
