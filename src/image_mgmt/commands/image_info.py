@@ -3,6 +3,7 @@
 
 """Image-info command - reads image version information from MTD devices"""
 
+import json
 import os
 import struct
 from .. import utils
@@ -11,80 +12,124 @@ from .. import utils
 def setup_parser(subparsers):
     """Setup argument parser for image-info command."""
     parser = subparsers.add_parser('image-info', help='Show image version information')
-    parser.add_argument('--type', choices=['recovery', 'selector', 'bank-a', 'bank-b', 'all'],
+    parser.add_argument('--type', choices=['recovery', 'selector', 'bank-a', 'bank-b', 'vivado', 'all'],
                         default='all', help='Version type to query')
     parser.set_defaults(func=run)
     return parser
 
 
-def extract_bootgen_version(device_path, platform='default', target_id=None):
+def _optional_data_offsets(device_path, platform):
+    """Return valid optional-data offsets, preferred platform layout first."""
+    preferred = (utils.IHT_OFFSET_VERSAL_2VE_2VM
+                 if platform == 'versal_2ve_2vm' else utils.IHT_OFFSET_DEFAULT)
+    offsets = []
+    for pointer_offset, iht_length in sorted(
+            utils.IHT_LAYOUTS, key=lambda layout: layout[0] != preferred):
+        try:
+            iht_bytes = utils.read_binary_file(device_path, pointer_offset, 4)
+            iht_offset = struct.unpack('<I', iht_bytes)[0]
+            if (len(iht_bytes) != 4 or iht_offset in (0, 0xFFFFFFFF) or
+                    iht_offset % 4 or iht_offset > 0xFFFFFFFF - iht_length):
+                continue
+            optional_data_offset = iht_offset + iht_length
+            if (os.path.isfile(device_path) and
+                    optional_data_offset + 4 > os.path.getsize(device_path)):
+                continue
+            if optional_data_offset not in offsets:
+                offsets.append(optional_data_offset)
+        except (OSError, RuntimeError, struct.error):
+            continue
+    return offsets
+
+
+def _extract_vivado_version(value):
+    """Extract Vivado version from Bootgen optional-data ID 0x24."""
+    try:
+        metadata = json.loads(value.rstrip(b'\x00').decode('utf-8'))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
+    def find_version(item):
+        if isinstance(item, dict):
+            version = item.get('vivado_version')
+            if isinstance(version, str) and version.strip():
+                return version.strip()
+            for child in item.values():
+                version = find_version(child)
+                if version:
+                    return version
+        elif isinstance(item, list):
+            for child in item:
+                version = find_version(child)
+                if version:
+                    return version
+        return None
+
+    return find_version(metadata)
+
+
+def extract_bootgen_version(device_path, platform='default', target_id=None,
+                            allow_legacy_fallback=True, data_cache=None):
     """
     Extract a version string from Bootgen optional data fields.
     Platform is auto-detected from /proc/device-tree/family.
     """
     try:
-        # Auto-detect platform
         if platform == 'default':
             platform = utils.detect_platform()
 
-        # Select IHT offset based on platform
-        # versal_2ve_2vm uses 0x2D0, default (Versal/ZynqMP) uses 0xC4
-        iht_offset_addr = utils.IHT_OFFSET_VERSAL_2VE_2VM if platform == 'versal_2ve_2vm' else utils.IHT_OFFSET_DEFAULT
-
-        # Step 1: Read IHT offset (4 bytes, little-endian)
-        # For Versal: at 0xC4, for Versal2: at 0x2D0
-        iht_bytes = utils.read_binary_file(device_path, iht_offset_addr, 4)
-        iht_offset = struct.unpack('<I', iht_bytes)[0]
-
-        # Step 2: Calculate optional data offset (IHT offset + 0x80)
-        opt_data_offset = iht_offset + utils.XIH_IHT_LEN
-
-        # Step 3: Read optional data section (read up to 2KB)
-        opt_data = utils.read_binary_file(device_path, opt_data_offset, 2048)
-
-        # Step 4: Search for the requested optional-data ID.
         target_id = target_id if target_id is not None else utils.OPT_DATA_ID_VERSION
         legacy_version = None
-        offset = 0
-        while offset < len(opt_data) - 4:
-            # Read optional data header (4 bytes: 2-byte ID + 2-byte length)
-            # Format: [ID (2 bytes, LE)][Length in words (2 bytes, LE)]
-            data_id = struct.unpack('<H', opt_data[offset:offset+2])[0]
-            length_words = struct.unpack('<H', opt_data[offset+2:offset+4])[0]
-            length_bytes = length_words * 4
+        cache_key = (device_path, platform)
+        if data_cache is not None and cache_key in data_cache:
+            optional_data = data_cache[cache_key]
+        else:
+            optional_data = []
+            for optional_data_offset in _optional_data_offsets(device_path, platform):
+                try:
+                    optional_data.append(utils.read_binary_file(
+                        device_path, optional_data_offset,
+                        utils.OPTIONAL_DATA_READ_SIZE))
+                except RuntimeError:
+                    continue
+            if data_cache is not None:
+                data_cache[cache_key] = optional_data
 
-            # Sanity check - length includes the 4-byte header
-            if length_bytes < 4 or length_bytes > 2048:
-                break
+        for opt_data in optional_data:
+            offset = 0
+            while offset + 4 <= len(opt_data):
+                data_id, length_words = struct.unpack_from('<HH', opt_data, offset)
+                length_bytes = length_words * 4
 
-            # Extract textual values for the requested entry and retain 0x21
-            # as a fallback for images built with the legacy metadata layout.
-            if data_id in (target_id, utils.OPT_DATA_ID_LEGACY_VERSION):
-                # Version string starts 4 bytes after header
-                version_start = offset + 4
-                version_end = version_start + min(utils.MAX_VERSION_LENGTH, length_bytes - 4)
+                if data_id == 0 and length_words == 0:
+                    offset += 4
+                    continue
+                if length_bytes < 4 or offset + length_bytes > len(opt_data):
+                    break
 
-                if version_end > len(opt_data):
-                    version_end = len(opt_data)
+                if (data_id == target_id or
+                        (allow_legacy_fallback and
+                         data_id == utils.OPT_DATA_ID_LEGACY_VERSION)):
+                    value_end = offset + length_bytes - utils.OPTIONAL_DATA_CHECKSUM_SIZE
+                    if value_end < offset + 4:
+                        break
+                    value = opt_data[offset + 4:value_end]
+                    if data_id == utils.OPT_DATA_ID_VIVADO_VERSION:
+                        value_str = _extract_vivado_version(value)
+                    else:
+                        value = value[:utils.MAX_VERSION_LENGTH]
+                        value_str = value.split(b'\x00', 1)[0].decode(
+                            'utf-8', errors='ignore').split('\n', 1)[0].strip()
+                        value_str = ''.join(c for c in value_str if c.isprintable())
+                        value_str = utils.clean_version_metadata(value_str)
+                    if data_id == utils.OPT_DATA_ID_VERSION and value_str:
+                        value_str = value_str.replace('+git', '')
+                    if data_id == target_id and value_str:
+                        return value_str
+                    if value_str:
+                        legacy_version = value_str
 
-                # Extract and decode version string (null-terminated)
-                version_bytes = opt_data[version_start:version_end]
-                version_str = version_bytes.split(b'\x00')[0].decode('utf-8', errors='ignore')
-
-                # Split on newline and take first line to remove garbage
-                version_str = version_str.split('\n')[0].strip()
-
-                # Remove any non-printable characters
-                version_str = ''.join(c for c in version_str if c.isprintable())
-
-                version_str = utils.clean_version_metadata(version_str)
-                if data_id == target_id:
-                    return version_str
-                legacy_version = version_str
-
-            # Move to next optional data entry
-            # Length includes the header, so just add length_bytes
-            offset += length_bytes
+                offset += length_bytes
 
         return legacy_version
 
@@ -93,18 +138,18 @@ def extract_bootgen_version(device_path, platform='default', target_id=None):
         return None
 
 
-def get_version(version_type):
+def get_version(version_type, platform=None, data_cache=None):
     """Get version information from MTD device"""
-    platform = utils.detect_platform()
+    platform = platform or utils.detect_platform()
 
     # Determine device and label based on type
     if version_type == 'recovery':
         device = utils.MTD_RECOVERY
-        label = "Image Recovery Application"
+        label = "Image Recovery"
         ver_type = 'recovery'
     elif version_type == 'selector':
         device = utils.MTD_SELECTOR
-        label = "Image Selector Application"
+        label = "Image Selector"
         ver_type = 'selector'
     elif version_type == 'bank-a':
         device = utils.MTD_BANK_A
@@ -117,21 +162,6 @@ def get_version(version_type):
     else:
         return (f"Error: Unknown version type: {version_type}", None)
 
-    if platform != 'zynqmp' and version_type in ('recovery', 'selector'):
-        try:
-            active_bank = utils.get_active_bank(utils.read_metadata())
-            if active_bank == 0:
-                device = utils.MTD_BANK_A
-            elif active_bank == 1:
-                device = utils.MTD_BANK_B
-            else:
-                utils.error_msg(f"Invalid active bank value: {active_bank}")
-                return (label, "Not Available")
-        except Exception as e:
-            utils.error_msg(f"Failed to determine active bank: {e}")
-            return (label, "Not Available")
-
-    # Check if device exists
     if not os.path.exists(device):
         return (label, "Not Available")
 
@@ -139,18 +169,25 @@ def get_version(version_type):
 
     if platform == 'zynqmp':
         version = utils.extract_version_from_offset(device)
+    elif version_type in ('recovery', 'selector'):
+        description = extract_bootgen_version(
+            device, platform, utils.OPT_DATA_ID_DESCRIPTION,
+            allow_legacy_fallback=False, data_cache=data_cache)
+        component_version = extract_bootgen_version(
+            device, platform, utils.OPT_DATA_ID_VERSION,
+            allow_legacy_fallback=False, data_cache=data_cache)
+        tools_version = extract_bootgen_version(
+            device, platform, utils.OPT_DATA_ID_TOOLS_VERSION,
+            allow_legacy_fallback=False, data_cache=data_cache)
+        version = '-'.join(value for value in (
+            description, component_version, tools_version) if value)
     else:
-        # Modern platform metadata mapping:
-        #   Bank A/B: 0x21 description
-        #   Selector: 0x22 component version
-        #   Recovery: 0x23 tools/release version
         optional_data_id = {
-            'recovery': utils.OPT_DATA_ID_TOOLS_VERSION,
-            'selector': utils.OPT_DATA_ID_VERSION,
             'bank-a': utils.OPT_DATA_ID_DESCRIPTION,
             'bank-b': utils.OPT_DATA_ID_DESCRIPTION,
         }[version_type]
-        version = extract_bootgen_version(device, platform, optional_data_id)
+        version = extract_bootgen_version(
+            device, platform, optional_data_id, data_cache=data_cache)
 
     if not version:
         try:
@@ -169,18 +206,36 @@ def get_version(version_type):
 def run(args):
     """Show image version information from MTD devices"""
 
-    types_to_query = []
-
     if args.type == 'all':
         types_to_query = ['recovery', 'selector', 'bank-a', 'bank-b']
+    elif args.type == 'vivado':
+        types_to_query = ['bank-a', 'bank-b']
     else:
         types_to_query = [args.type]
 
     results = []
+    platform = utils.detect_platform()
+    if platform == 'zynqmp' and args.type == 'vivado':
+        return 0
+
+    bank_info = {
+        'bank-a': (utils.MTD_BANK_A, "Bank A"),
+        'bank-b': (utils.MTD_BANK_B, "Bank B"),
+    }
+    data_cache = {}
 
     for version_type in types_to_query:
-        label, version = get_version(version_type)
-        results.append((label, version))
+        if args.type != 'vivado':
+            label, version = get_version(
+                version_type, platform, data_cache=data_cache)
+            results.append((label, version))
+        if platform != 'zynqmp' and version_type in ('bank-a', 'bank-b'):
+            device, bank_label = bank_info[version_type]
+            vivado_version = extract_bootgen_version(
+                device, platform, utils.OPT_DATA_ID_VIVADO_VERSION,
+                allow_legacy_fallback=False, data_cache=data_cache)
+            results.append((f"{bank_label} Vivado version",
+                            vivado_version or "No Vivado version information found"))
 
     print("\n" + "="*60)
     print("Version Information")
