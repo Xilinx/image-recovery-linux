@@ -51,7 +51,14 @@ def step_msg(step: str, total: str, message: str):
 # Bootgen Optional Data Field Constants
 IHT_OFFSET_DEFAULT = 0xC4              # Image Header Table offset (default: Versal/ZynqMP)
 IHT_OFFSET_VERSAL_2VE_2VM = 0x2D0      # Image Header Table offset for Versal_2VE_2VM
-XIH_IHT_LEN = 0x80                     # Image Header Table length (128 bytes)
+XIH_IHT_LEN = 0x80                     # Versal Image Header Table length
+XIH_IHT_LEN_VERSAL_2VE_2VM = 0x80      # Gen 2 also has a 128-byte IHT; IDs 1/2 follow
+IHT_LAYOUTS = (
+    (IHT_OFFSET_DEFAULT, XIH_IHT_LEN),
+    (IHT_OFFSET_VERSAL_2VE_2VM, XIH_IHT_LEN_VERSAL_2VE_2VM),
+)
+OPTIONAL_DATA_READ_SIZE = 8192         # Include Gen 2 device data before version records
+OPTIONAL_DATA_CHECKSUM_SIZE = 4
 
 # Boot header magic identifiers - platform-specific offsets
 BOOT_SYNC_WORD = b'\x66\x55\x99\xaa'   # Xilinx boot header sync word (0xAA995566 in LE)
@@ -64,6 +71,7 @@ BOOT_HEADER_OFFSETS = [
 OPT_DATA_ID_DESCRIPTION = 0x21         # Component description
 OPT_DATA_ID_VERSION = 0x22             # Component/application version
 OPT_DATA_ID_TOOLS_VERSION = 0x23       # Xilinx tools release version
+OPT_DATA_ID_VIVADO_VERSION = 0x24      # Vivado version
 OPT_DATA_ID_LEGACY_VERSION = 0x21      # Version ID used by older images
 MAX_VERSION_LENGTH = 128               # Maximum version string length
 VERSION_STRING_OFFSET = 0x70
