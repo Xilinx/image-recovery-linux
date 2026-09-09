@@ -346,7 +346,7 @@ class EepromSysfsHandler:
         """Enable EEPROM writes by disabling write protection via GPIO.
 
         Returns:
-            True if successful or not needed, False on error
+            True if successful, False on error
         """
         try:
             # Run: timeout 1 gpioset EEPROM_WC_B=0
@@ -365,7 +365,7 @@ class EepromSysfsHandler:
             else:
                 # Command failed - check if it's because GPIO doesn't exist
                 error_output = (result.stderr + result.stdout).lower()
-                gpio_not_found = any(phrase in error_output for phrase in [
+                gpio_not_found = 'eeprom_wc_b' in error_output and any(phrase in error_output for phrase in [
                     'not found',
                     'no such',
                     'cannot find',
@@ -374,17 +374,22 @@ class EepromSysfsHandler:
                 ])
 
                 if gpio_not_found:
-                    # GPIO doesn't exist - not needed on this board
-                    return True
+                    self.log(
+                        "EEPROM_WC_B GPIO pin was not found on this board. "
+                        "Cannot disable EEPROM write protection. EEPROM write aborted.",
+                        'error'
+                    )
+                    return False
                 else:
-                    self.log(f"Failed to disable write protection: {result.stderr.strip()}, attempting write anyway", 'warning')
-                    return True  # Try to proceed anyway
-        except FileNotFoundError:
-            # gpioset not installed - not needed if board has no write protection
-            return True
+                    details = result.stderr.strip() or result.stdout.strip() or f'exit code {result.returncode}'
+                    self.log(f"Failed to disable EEPROM write protection: {details}. EEPROM write aborted.", 'error')
+                    return False
+        except FileNotFoundError as e:
+            self.log(f"Cannot disable EEPROM write protection: required command not found ({e}). EEPROM write aborted.", 'error')
+            return False
         except Exception as e:
-            self.log(f"Error disabling write protection: {e}, attempting write anyway", 'warning')
-            return True  # Proceed anyway
+            self.log(f"Error disabling EEPROM write protection: {e}. EEPROM write aborted.", 'error')
+            return False
 
     def validate_eeprom_path(self) -> bool:
         """Validate that EEPROM path exists and is accessible."""
@@ -474,7 +479,8 @@ class EepromSysfsHandler:
 
         try:
             # Attempt to disable write protection via GPIO
-            self.enable_eeprom_write()
+            if not self.enable_eeprom_write():
+                return False
 
             if not os.access(self.eeprom_path, os.W_OK):
                 self.log(f"EEPROM path is not writable: {self.eeprom_path}", 'error')
