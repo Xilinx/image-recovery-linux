@@ -220,6 +220,26 @@ write_lu_config() {
 
 }
 
+check_ufs_support() {
+	local device
+	for device in /dev/bsg/ufs-bsg*; do
+		if [[ "$device" =~ $ALLOWED_DEVICE_PATTERN ]] && [ -e "$device" ]; then
+			return 0
+		fi
+	done
+
+	FINAL_STATUS="ERROR"
+	FINAL_MESSAGE="No UFS devices found on this platform. UFS configuration requires a UFS storage device"
+	echo "[ERROR] No UFS devices found on this platform" >&2
+	echo "[ERROR] UFS configuration requires a UFS storage device" >&2
+	if [ "$LOGGING_ENABLED" = "1" ]; then
+		log_error "No UFS devices found on this platform"
+		log_error "UFS configuration requires a UFS storage device"
+	fi
+	printf '{"status":"error","message":"%s"}\n' "$FINAL_MESSAGE"
+	exit 1
+}
+
 # Function to query device configuration
 query_device() {
 	# Initialize logging for query operation
@@ -240,6 +260,7 @@ query_device() {
 	    [ -n "$query_device" ] && UFS_DEVICE="$query_device"
     fi
 
+    check_ufs_support
     command -v ufs-utils &> /dev/null || { echo '{"status":"error","message":"Required tools not found: ufs-utils. Please install them."}'; exit 1; }
     [[ "$UFS_DEVICE" =~ $ALLOWED_DEVICE_PATTERN ]] && [ -e "$UFS_DEVICE" ] || { echo "{\"status\":\"error\",\"message\":\"Invalid or missing UFS device: $UFS_DEVICE\"}"; exit 1; }
 
@@ -430,6 +451,7 @@ main() {
 		fi
 	fi
 
+	check_ufs_support
 	command -v ufs-utils &> /dev/null || { echo '{"status":"error","message":"Required tools not found: ufs-utils. Please install them."}'; exit 1; }
 
 	log_message "POST data length: ${#POST_DATA} bytes"
