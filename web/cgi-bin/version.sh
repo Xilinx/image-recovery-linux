@@ -14,6 +14,7 @@ XIH_IHT_LEN=128                        # 0x80 - Image Header Table length
 OPT_DATA_ID_DESCRIPTION=33             # 0x21 - Component description
 OPT_DATA_ID_VERSION=34                 # 0x22 - Component/application version
 OPT_DATA_ID_TOOLS_VERSION=35           # 0x23 - Xilinx tools release version
+OPT_DATA_ID_BUILD_ID=36                # 0x24 - Optional automation build ID
 MAX_VERSION_LENGTH=128                 # Maximum version string length
 
 # Get MTD device path by partition name
@@ -137,13 +138,18 @@ extract_bootgen_version() {
 				version_end=2048
 			fi
 
-			if [ $((version_end - version_start)) -gt $((length_bytes - 4)) ]; then
-				version_end=$((version_start + length_bytes - 4))
+			# Exclude both the record header and trailing checksum.
+			if [ "$length_bytes" -lt 8 ]; then
+				break
+			fi
+			if [ $((version_end - version_start)) -gt $((length_bytes - 8)) ]; then
+				version_end=$((version_start + length_bytes - 8))
 			fi
 
 			# Extract version string
 			version_str=$(dd if="$opt_data_file" bs=1 skip=$version_start count=$((version_end - version_start)) 2>/dev/null | \
 				tr '\000' '\n' | awk 'NR==1 {print; exit}')
+			rm -f "$opt_data_file"
 
 			if [ -n "$version_str" ]; then
 				echo "$version_str"
@@ -171,6 +177,7 @@ get_version() {
 	local description
 	local component_version
 	local tools_version
+	local build_id
 	local is_application=0
 
 	# Determine device and label based on type
@@ -218,7 +225,8 @@ get_version() {
 		component_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_VERSION")
 		component_version=$(printf '%s' "$component_version" | sed 's/+git//g')
 		tools_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_TOOLS_VERSION")
-		version=$(printf '%s\n%s\n%s\n' "$description" "$component_version" "$tools_version" | \
+		build_id=$(extract_bootgen_version "$device" "$OPT_DATA_ID_BUILD_ID")
+		version=$(printf '%s\n%s\n%s\n%s\n' "$description" "$component_version" "$tools_version" "$build_id" | \
 			awk 'NF { if (result) result = result "-" $0; else result = $0 } END { print result }')
 	else
 		version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_DESCRIPTION")
