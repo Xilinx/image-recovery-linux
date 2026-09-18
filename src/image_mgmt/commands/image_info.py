@@ -43,7 +43,7 @@ def _optional_data_offsets(device_path, platform):
 
 
 def _extract_vivado_version(value):
-    """Extract Vivado version from Bootgen optional-data ID 0x24."""
+    """Extract Vivado version from the component manifest at optional-data ID 0x25."""
     try:
         metadata = json.loads(value.rstrip(b'\x00').decode('utf-8'))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -179,8 +179,12 @@ def get_version(version_type, platform=None, data_cache=None):
         tools_version = extract_bootgen_version(
             device, platform, utils.OPT_DATA_ID_TOOLS_VERSION,
             allow_legacy_fallback=False, data_cache=data_cache)
+        build_id = extract_bootgen_version(
+            device, platform, utils.OPT_DATA_ID_BUILD_ID,
+            allow_legacy_fallback=False, data_cache=data_cache)
         version = '-'.join(value for value in (
-            description, component_version, tools_version) if value)
+            description, component_version, tools_version,
+            build_id) if value)
     else:
         optional_data_id = {
             'bank-a': utils.OPT_DATA_ID_DESCRIPTION,
