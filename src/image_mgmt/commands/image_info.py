@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
 # SPDX-License-Identifier: MIT
 
-"""Image-info command - reads image version information from MTD devices"""
+"""Image-info command - reads metadata from flash or a local boot image."""
 
 import json
 import os
@@ -12,8 +12,11 @@ from .. import utils
 def setup_parser(subparsers):
     """Setup argument parser for image-info command."""
     parser = subparsers.add_parser('image-info', help='Show image version information')
-    parser.add_argument('--type', choices=['recovery', 'selector', 'bank-a', 'bank-b', 'vivado', 'all'],
-                        default='all', help='Version type to query')
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument('--type', choices=['recovery', 'selector', 'bank-a', 'bank-b', 'vivado', 'all'],
+                        default=None, help='Flash version type to query (default: all)')
+    source.add_argument('--file', metavar='boot.bin',
+                        help='Extract and display version information from a local boot image')
     parser.set_defaults(func=run)
     return parser
 
@@ -138,29 +141,29 @@ def extract_bootgen_version(device_path, platform='default', target_id=None,
         return None
 
 
-def get_version(version_type, platform=None, data_cache=None):
-    """Get version information from MTD device"""
+def get_version(version_type, platform=None, data_cache=None, device_path=None):
+    """Get version information from an MTD device or a local boot image."""
     platform = platform or utils.detect_platform()
 
-    # Determine device and label based on type
-    if version_type == 'recovery':
+    if version_type not in ('recovery', 'selector', 'bank-a', 'bank-b'):
+        return (f"Error: Unknown version type: {version_type}", None)
+    ver_type = 'bank' if version_type in ('bank-a', 'bank-b') else version_type
+
+    if device_path is not None:
+        device = device_path
+        label = "Functional Description"
+    elif version_type == 'recovery':
         device = utils.MTD_RECOVERY
         label = "Image Recovery"
-        ver_type = 'recovery'
     elif version_type == 'selector':
         device = utils.MTD_SELECTOR
         label = "Image Selector"
-        ver_type = 'selector'
     elif version_type == 'bank-a':
         device = utils.MTD_BANK_A
         label = "Bank A image ver"
-        ver_type = 'bank'
     elif version_type == 'bank-b':
         device = utils.MTD_BANK_B
         label = "Bank B image ver"
-        ver_type = 'bank'
-    else:
-        return (f"Error: Unknown version type: {version_type}", None)
 
     if not os.path.exists(device):
         return (label, "Not Available")
@@ -208,18 +211,36 @@ def get_version(version_type, platform=None, data_cache=None):
 
 
 def run(args):
-    """Show image version information from MTD devices"""
+    """Show image version information from flash or a local boot image."""
+    if args.file is not None:
+        try:
+            if not os.path.isfile(args.file):
+                raise ValueError("Path is not a regular file")
+            with open(args.file, 'rb') as image:
+                if not utils._has_valid_boot_header(image):
+                    raise ValueError("Not a valid BOOT.BIN: boot header not found")
+                image.seek(0x20)
+                header = image.read(8)
+            platform = ('zynqmp' if header == utils.BOOT_SYNC_WORD + utils.BOOT_XNLX_MAGIC
+                        else 'versal')
+        except (OSError, ValueError) as exc:
+            utils.error_msg(f"Cannot read image {args.file}: {exc}")
+            return 1
+    else:
+        platform = utils.detect_platform()
 
-    if args.type == 'all':
+    query_type = args.type or 'all'
+    if args.file is not None:
+        types_to_query = ['bank-a']
+    elif query_type == 'all':
         types_to_query = ['recovery', 'selector', 'bank-a', 'bank-b']
-    elif args.type == 'vivado':
+    elif query_type == 'vivado':
         types_to_query = ['bank-a', 'bank-b']
     else:
-        types_to_query = [args.type]
+        types_to_query = [query_type]
 
     results = []
-    platform = utils.detect_platform()
-    if platform == 'zynqmp' and args.type == 'vivado':
+    if platform == 'zynqmp' and query_type == 'vivado':
         return 0
 
     bank_info = {
@@ -229,16 +250,30 @@ def run(args):
     data_cache = {}
 
     for version_type in types_to_query:
-        if args.type != 'vivado':
+        if query_type != 'vivado':
             label, version = get_version(
-                version_type, platform, data_cache=data_cache)
+                version_type, platform, data_cache=data_cache, device_path=args.file)
             results.append((label, version))
         if platform != 'zynqmp' and version_type in ('bank-a', 'bank-b'):
-            device, bank_label = bank_info[version_type]
+            if args.file is not None:
+                device = args.file
+                vivado_label = "Vivado version"
+                for label, data_id in (
+                        ('Functional Version', utils.OPT_DATA_ID_VERSION),
+                        ('Tools version', utils.OPT_DATA_ID_TOOLS_VERSION),
+                        ('Build ID', utils.OPT_DATA_ID_BUILD_ID)):
+                    version = extract_bootgen_version(
+                        device, platform, data_id,
+                        allow_legacy_fallback=False, data_cache=data_cache)
+                    if version:
+                        results.append((label, version))
+            else:
+                device, bank_label = bank_info[version_type]
+                vivado_label = f"{bank_label} Vivado version"
             vivado_version = extract_bootgen_version(
                 device, platform, utils.OPT_DATA_ID_VIVADO_VERSION,
                 allow_legacy_fallback=False, data_cache=data_cache)
-            results.append((f"{bank_label} Vivado version",
+            results.append((vivado_label,
                             vivado_version or "No Vivado version information found"))
 
     print("\n" + "="*60)
