@@ -212,6 +212,11 @@ body {
     margin-bottom: 12px;
 }
 
+.sysinfo-error {
+    color: #b42318;
+    overflow-wrap: anywhere;
+}
+
 .sysinfotbl {
     width: 100%;
     border-collapse: collapse;

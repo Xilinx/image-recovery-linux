@@ -44,6 +44,7 @@ class DOMManager {
     cacheElements() {
         const getElement = id => document.getElementById(id);
         this.elements.sysBoardTbody = getElement('sysboard-tbody');
+        this.elements.sysBoardError = getElement('sysboard-error');
         this.elements.carrierTbody = getElement('carrier-tbody');
         this.elements.bootStatusTbody = getElement('boot-status-tbody');
         this.elements.carrierSection = getElement('carrier-card-section');
@@ -296,9 +297,19 @@ class SystemInfoManager {
     }
 
     fetchSystemInfo() {
-        this.fetchJSON('cgi-bin/sysinfo_eeprom.sh', 'system information')
+        return this.fetchJSON('cgi-bin/sysinfo_eeprom.sh', 'system information')
             .then(data => {
-                if (!data) return;
+                const errorMessage = !data
+                    ? 'Unable to load system board information. Please try again.'
+                    : data.error || (!data.SysBoardInfo ? 'System board information is missing from the response.' : '');
+                const errorElement = this.dom.elements.sysBoardError;
+                if (errorElement) {
+                    errorElement.textContent = errorMessage;
+                    errorElement.classList.toggle('hidden', !errorMessage);
+                }
+                this.dom.elements.sysBoardTbody.closest('table').classList.toggle('hidden', !!errorMessage);
+                this.dom.elements.carrierSection?.classList.add('hidden');
+                if (errorMessage) return;
 
                 const updateFields = (prefix, source) => {
                     if (!source) return;
