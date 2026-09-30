@@ -54,8 +54,22 @@ if ! read_header "$eeprom_idx" header; then
 	exit 1
 fi
 
-board_offset=${header[$IPMI_FRU_COMMON_HEADER_BOARD_OFFSET_IDX]}
-decode_output=$(decode_board_area "$eeprom_idx" "$board_offset")
+board_offset=${header[${IPMI_FRU_COMMON_HEADER_BOARD_OFFSET_IDX:?}]}
+if [ -z "$board_offset" ] || [ "$board_offset" -eq 0 ]; then
+	echo "Content-type: application/json"
+	echo ""
+	echo '{"error":"FRU board area not present in EEPROM"}'
+	ipmi_fru_free "$eeprom_idx"
+	exit 1
+fi
+
+if ! decode_output=$(decode_board_area "$eeprom_idx" "$board_offset"); then
+	echo "Content-type: application/json"
+	echo ""
+	echo '{"error":"Failed to decode FRU board area"}'
+	ipmi_fru_free "$eeprom_idx"
+	exit 1
+fi
 ipmi_fru_free "$eeprom_idx"
 
 # Extract main board fields

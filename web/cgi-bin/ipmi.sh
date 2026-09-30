@@ -5,6 +5,8 @@
 
 # Simplified IPMI FRU library using sysfs I2C EEPROMs
 
+# Index for Board Area offset in the FRU common header
+IPMI_FRU_COMMON_HEADER_BOARD_OFFSET_IDX=3
 # Index for Area size in FRU area header
 IPMI_FRU_AREA_HEADER_SIZE_IDX=1
 
