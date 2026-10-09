@@ -46,7 +46,7 @@ def _optional_data_offsets(device_path, platform):
 
 
 def _extract_vivado_version(value):
-    """Extract Vivado version from the component manifest at optional-data ID 0x25."""
+    """Extract Vivado version from the configured optional-data manifest."""
     try:
         metadata = json.loads(value.rstrip(b'\x00').decode('utf-8'))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -182,9 +182,11 @@ def get_version(version_type, platform=None, data_cache=None, device_path=None):
         tools_version = extract_bootgen_version(
             device, platform, utils.OPT_DATA_ID_TOOLS_VERSION,
             allow_legacy_fallback=False, data_cache=data_cache)
-        build_id = extract_bootgen_version(
-            device, platform, utils.OPT_DATA_ID_BUILD_ID,
-            allow_legacy_fallback=False, data_cache=data_cache)
+        build_id = None
+        if utils.ENABLE_BOOTGEN_BUILD_ID:
+            build_id = extract_bootgen_version(
+                device, platform, utils.OPT_DATA_ID_BUILD_ID,
+                allow_legacy_fallback=False, data_cache=data_cache)
         version = '-'.join(value for value in (
             description, component_version, tools_version,
             build_id) if value)
@@ -258,10 +260,13 @@ def run(args):
             if args.file is not None:
                 device = args.file
                 vivado_label = "Vivado version"
-                for label, data_id in (
-                        ('Functional Version', utils.OPT_DATA_ID_VERSION),
-                        ('Tools version', utils.OPT_DATA_ID_TOOLS_VERSION),
-                        ('Build ID', utils.OPT_DATA_ID_BUILD_ID)):
+                metadata_fields = [
+                    ('Functional Version', utils.OPT_DATA_ID_VERSION),
+                    ('Tools version', utils.OPT_DATA_ID_TOOLS_VERSION),
+                ]
+                if utils.ENABLE_BOOTGEN_BUILD_ID:
+                    metadata_fields.append(('Build ID', utils.OPT_DATA_ID_BUILD_ID))
+                for label, data_id in metadata_fields:
                     version = extract_bootgen_version(
                         device, platform, data_id,
                         allow_legacy_fallback=False, data_cache=data_cache)

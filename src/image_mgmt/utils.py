@@ -71,8 +71,10 @@ BOOT_HEADER_OFFSETS = [
 OPT_DATA_ID_DESCRIPTION = 0x21         # Component description
 OPT_DATA_ID_VERSION = 0x22             # Component/application version
 OPT_DATA_ID_TOOLS_VERSION = 0x23       # Xilinx tools release version
+# Enable only for images with a build ID/date at 0x24 and manifest at 0x25.
+ENABLE_BOOTGEN_BUILD_ID = False
 OPT_DATA_ID_BUILD_ID = 0x24            # Optional automation build ID
-OPT_DATA_ID_VIVADO_VERSION = 0x25      # Component manifest containing Vivado version
+OPT_DATA_ID_VIVADO_VERSION = 0x25 if ENABLE_BOOTGEN_BUILD_ID else 0x24
 OPT_DATA_ID_LEGACY_VERSION = 0x21      # Version ID used by older images
 MAX_VERSION_LENGTH = 128               # Maximum version string length
 VERSION_STRING_OFFSET = 0x70
