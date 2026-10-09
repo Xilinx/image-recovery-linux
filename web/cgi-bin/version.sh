@@ -14,6 +14,8 @@ XIH_IHT_LEN=128                        # 0x80 - Image Header Table length
 OPT_DATA_ID_DESCRIPTION=33             # 0x21 - Component description
 OPT_DATA_ID_VERSION=34                 # 0x22 - Component/application version
 OPT_DATA_ID_TOOLS_VERSION=35           # 0x23 - Xilinx tools release version
+# Enable only for images with a build ID/date at 0x24 (manifest at 0x25).
+ENABLE_BOOTGEN_BUILD_ID=false
 OPT_DATA_ID_BUILD_ID=36                # 0x24 - Optional automation build ID
 MAX_VERSION_LENGTH=128                 # Maximum version string length
 
@@ -225,7 +227,10 @@ get_version() {
 		component_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_VERSION")
 		component_version=$(printf '%s' "$component_version" | sed 's/+git//g')
 		tools_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_TOOLS_VERSION")
-		build_id=$(extract_bootgen_version "$device" "$OPT_DATA_ID_BUILD_ID")
+		build_id=""
+		if [ "$ENABLE_BOOTGEN_BUILD_ID" = true ]; then
+			build_id=$(extract_bootgen_version "$device" "$OPT_DATA_ID_BUILD_ID")
+		fi
 		version=$(printf '%s\n%s\n%s\n%s\n' "$description" "$component_version" "$tools_version" "$build_id" | \
 			awk 'NF { if (result) result = result "-" $0; else result = $0 } END { print result }')
 	else
