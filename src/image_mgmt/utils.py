@@ -222,6 +222,7 @@ def extract_device_id_from_boot_bin(file_path: str) -> List[str]:
         # Versal 2 family
         r'xc2ve\d+[a-z]*',    # e.g., xc2ve3858
         r'xc2vp\d+[a-z]*',    # e.g., xc2vp3602
+        r'xc2vm\d+[a-z]*',    # e.g., xc2vm3654
         # Versal family
         r'xcvc\d+[a-z]*',     # e.g., xcvc1902
         r'xcvh\d+[a-z]*',     # e.g., xcvh1582
@@ -273,7 +274,8 @@ def get_device_family(device_id: str) -> Optional[str]:
     device_id_lower = device_id.lower()
 
     if device_id_lower.startswith('xc2ve') or \
-       device_id_lower.startswith('xc2vp'):
+       device_id_lower.startswith('xc2vp') or \
+       device_id_lower.startswith('xc2vm'):
         return 'versal-2ve-2vm'
 
     if device_id_lower.startswith(('xcvc', 'xcvh', 'xcvp', 'xcve')) or \

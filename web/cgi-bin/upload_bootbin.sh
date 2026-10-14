@@ -259,7 +259,7 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 		log_info "Current device ID: $current_device_id"
 
 		if [ -n "$current_device_id" ]; then
-			boot_device_ids=$(strings "$file_path" | grep -ioE 'xc(2ve|2vp|vc|ve|vh|vp|vr|vm|k|zu)[0-9]+[a-z]*' | tr '[:upper:]' '[:lower:]' | sort -u | tr '\n' ' ')
+			boot_device_ids=$(strings "$file_path" | grep -ioE 'xc(2ve|2vp|2vm|vc|ve|vh|vp|vr|vm|k|zu)[0-9]+[a-z]*' | tr '[:upper:]' '[:lower:]' | sort -u | tr '\n' ' ')
 
 			if [ -n "$boot_device_ids" ]; then
 				log_info "Boot.bin device ID(s): $boot_device_ids"
@@ -289,7 +289,7 @@ if [ "${REQUEST_METHOD:-}" = "POST" ]; then
 				# Determine device families for error message
 				current_family=""
 				case "$current_device_id" in
-					xc2ve*|xc2vp*) current_family="versal-2ve-2vm" ;;
+					xc2ve*|xc2vp*|xc2vm*) current_family="versal-2ve-2vm" ;;
 					xcvc*|xcve*|xcvh*|xcvp*|xcvr*|xcvm*) current_family="versal" ;;
 					xck*|xczu*) current_family="zynqmp" ;;
 				esac
