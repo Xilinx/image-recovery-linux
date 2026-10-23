@@ -8,7 +8,7 @@
 # - Bank A and Bank B images
 
 # Constants for bootgen optional data extraction
-IHT_OFFSET_DEFAULT=196                  # 0xC4 - Image Header Table offset (default: Versal/ZynqMP)
+IHT_OFFSET_DEFAULT=196                  # 0xC4 - Image Header Table offset (default: Versal)
 IHT_OFFSET_VERSAL_2VE_2VM=720          # 0x2D0 - Image Header Table offset for Versal_2VE_2VM
 XIH_IHT_LEN=128                        # 0x80 - Image Header Table length
 OPT_DATA_ID_DESCRIPTION=33             # 0x21 - Component description
@@ -17,6 +17,8 @@ OPT_DATA_ID_TOOLS_VERSION=35           # 0x23 - Xilinx tools release version
 # Enable only for images with a build ID/date at 0x24 (manifest at 0x25).
 ENABLE_BOOTGEN_BUILD_ID=false
 OPT_DATA_ID_BUILD_ID=36                # 0x24 - Optional automation build ID
+VERSION_STRING_OFFSET=112             # 0x70 - ZynqMP boot header version
+VERSION_STRING_SIZE=36                # 0x24 - ZynqMP version field length
 MAX_VERSION_LENGTH=128                 # Maximum version string length
 
 # Get MTD device path by partition name
@@ -63,8 +65,34 @@ detect_platform() {
 			echo "versal_2ve_2vm"
 			return
 		fi
+		if echo "$family" | grep -q "zynqmp"; then
+			echo "zynqmp"
+			return
+		fi
 	fi
 	echo "default"
+}
+
+# Read the ZynqMP version field from the boot header.
+extract_zynqmp_version() {
+	local device="$1"
+	local version
+
+	version=$(dd if="$device" bs=1 \
+		skip="$VERSION_STRING_OFFSET" count="$VERSION_STRING_SIZE" \
+		2>/dev/null | LC_ALL=C awk '
+		BEGIN { RS = "\0" }
+		NR == 1 {
+			if ($0 ~ /[^[:print:][:space:]]/)
+				exit
+			$1 = $1
+			if (NF)
+				print
+			exit
+		}')
+
+	[ -n "$version" ] || return 1
+	printf '%s\n' "$version"
 }
 
 # Extract version string from bootgen optional data fields
@@ -221,8 +249,9 @@ get_version() {
 		return 1
 	fi
 
-	# Application images expose description, component, and tools versions separately.
-	if [ "$is_application" -eq 1 ]; then
+	if [ "$(detect_platform)" = "zynqmp" ]; then
+		version=$(extract_zynqmp_version "$device")
+	elif [ "$is_application" -eq 1 ]; then
 		description=$(extract_bootgen_version "$device" "$OPT_DATA_ID_DESCRIPTION")
 		component_version=$(extract_bootgen_version "$device" "$OPT_DATA_ID_VERSION")
 		component_version=$(printf '%s' "$component_version" | sed 's/+git//g')
@@ -251,9 +280,10 @@ get_version() {
 echo "Content-type: text/plain"
 echo ""
 
-# Output version information in plain text format
-get_version recovery
-get_version selector
+if [ "$(detect_platform)" != "zynqmp" ]; then
+	get_version recovery
+	get_version selector
+fi
 get_version bank-a
 get_version bank-b
 
