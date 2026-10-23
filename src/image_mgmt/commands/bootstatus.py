@@ -57,13 +57,32 @@ def get_fru_info() -> Dict[str, Any]:
             check=False
         )
 
+        output = (result.stdout + '\n' + result.stderr).strip()
         if result.returncode != 0:
-            return {'error': f'ipmi-fru command failed: {result.stderr}'}
+            details = output or f'exit code {result.returncode}'
+            return {'error': f'ipmi-fru failed: {details}'}
+
+        fru_errors = []
+        board_decode_failed = False
+        other_areas = ('product info area', 'multirecord', 'multi-record', 'multi record', 'oem')
+        for line in output.splitlines():
+            line = line.strip()
+            if line.startswith('FRU Error:'):
+                detail = line.split(':', 1)[1].strip() or 'Unspecified FRU decode error'
+                if detail not in fru_errors:
+                    fru_errors.append(detail)
+                if not detail.lower().startswith(other_areas):
+                    board_decode_failed = True
+        if board_decode_failed:
+            return {'error': 'Failed to decode FRU information: ' + '; '.join(fru_errors)}
 
         product_name = product_revision = uuid = None
+        board_info_present = False
 
         for line in result.stdout.split('\n'):
             line = line.strip()
+            if line.startswith('FRU Board ') and ':' in line:
+                board_info_present = True
 
             if 'FRU Board Product Name:' in line:
                 product_name = line.split(':', 1)[1].strip()
@@ -77,11 +96,17 @@ def get_fru_info() -> Dict[str, Any]:
                 elif not uuid:
                     uuid = _parse_uuid_from_hex(custom_info.split())
 
-        return {
+        if not board_info_present:
+            return {'error': 'No FRU board information returned by ipmi-fru.'}
+
+        info = {
             'product_name': product_name or 'Not Available',
             'product_revision': product_revision or 'Not Available',
             'uuid': uuid or 'Not Available'
         }
+        if fru_errors:
+            info['warnings'] = fru_errors
+        return info
 
     except FileNotFoundError:
         return {'error': 'ipmi-fru command not found. Install freeipmi package.'}
@@ -169,6 +194,8 @@ def run(args):
         utils.info_msg(f"Product Name: {fru_info['product_name']}")
         utils.info_msg(f"Product Revision: {fru_info['product_revision']}")
         utils.info_msg(f"UUID: {fru_info['uuid']}")
+        for warning in fru_info.get('warnings', []):
+            utils.warning_msg(f'FRU decode warning: {warning}')
     print("="*60 + "\n")
 
     return 0
